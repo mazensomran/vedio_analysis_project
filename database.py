@@ -1,3 +1,4 @@
+
 import sqlite3
 import json
 from pathlib import Path
@@ -17,6 +18,7 @@ class VideoAnalysisDB:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
+        # جدول العمليات
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.tables['processes']} (
                 process_id TEXT PRIMARY KEY,
@@ -31,6 +33,7 @@ class VideoAnalysisDB:
             )
         """)
 
+        # جدول الوجوه
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.tables['faces']} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,6 +48,7 @@ class VideoAnalysisDB:
             )
         """)
 
+        # جدول النصوص
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.tables['texts']} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,6 +63,7 @@ class VideoAnalysisDB:
             )
         """)
 
+        # جدول النصوص الصوتية
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.tables['transcriptions']} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +77,7 @@ class VideoAnalysisDB:
             )
         """)
 
+        # جدول التتبع
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS {self.tables['tracking']} (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,16 +91,15 @@ class VideoAnalysisDB:
             )
         """)
 
+        # جدول المشاهد (تم تعديله ليعكس استخدام Qwen2-VL فقط للوصف)
         cursor.execute(f"""
                     CREATE TABLE IF NOT EXISTS {self.tables['scenes']} (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         process_id TEXT,
                         frame_number INTEGER,
-                        activity_label_en TEXT,  -- النشاط من VideoMAE (الإنجليزية)
-                        activity_label_ar TEXT,  -- النشاط من VideoMAE (العربية)
-                        activity_confidence REAL,
-                        description_en TEXT,     -- الوصف من BLIP (الإنجليزية)
-                        description_ar TEXT,     -- الوصف من BLIP (العربية)
+                        description_en TEXT,     -- الوصف من Qwen2-VL (الإنجليزية)
+                        description_ar TEXT,     -- الوصف من Qwen2-VL (العربية)
+                        confidence REAL,         -- ثقة الوصف
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         FOREIGN KEY (process_id) REFERENCES {self.tables['processes']} (process_id)
                     )
@@ -247,15 +252,14 @@ class VideoAnalysisDB:
         """إضافة تحليل المشهد/النشاط إلى قاعدة البيانات"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        activity_label_en = scene_info.get("activity", "unknown")
-        activity_label_ar = scene_info.get("activity_ar", "غير معروف")
-        activity_confidence = scene_info.get("confidence", 0.0)
-        description_en = scene_info.get("description", "لا يوجد وصف")
-        description_ar = scene_info.get("description_ar", "لا يوجد وصف")
+        # نستخدم description_en و description_ar مباشرة من Qwen2-VL
+        description_en = scene_info.get("description_en", "unknown")
+        description_ar = scene_info.get("description_ar", "غير معروف")
+        confidence = scene_info.get("confidence", 0.0)
         frame_number = scene_info.get("frame_number")
         cursor.execute(
-            f"INSERT INTO {self.tables['scenes']} (process_id, frame_number, activity_label_en, activity_label_ar, activity_confidence, description_en, description_ar) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (process_id, frame_number, activity_label_en, activity_label_ar, activity_confidence, description_en, description_ar)
+            f"INSERT INTO {self.tables['scenes']} (process_id, frame_number, description_en, description_ar, confidence) VALUES (?, ?, ?, ?, ?)",
+            (process_id, frame_number, description_en, description_ar, confidence)
         )
         conn.commit()
         conn.close()
@@ -288,20 +292,18 @@ class VideoAnalysisDB:
                        (process_id,))
         tracks_count = cursor.fetchone()[0]
 
-        # الحصول على تحليل المشهد
+        # الحصول على تحليل المشهد (تم تعديله)
         cursor.execute(f"""
-                    SELECT activity_label_en, activity_label_ar, activity_confidence, description_en, description_ar
+                    SELECT description_en, description_ar, confidence
                     FROM {self.tables['scenes']}
                     WHERE process_id = ?
                     ORDER BY frame_number DESC LIMIT 1
                 """, (process_id,))
         scene_row = cursor.fetchone()
         scene_analysis = {
-            "activity_en": scene_row[0],
-            "activity_ar": scene_row[1],
+            "description_en": scene_row[0],
+            "description_ar": scene_row[1],
             "confidence": scene_row[2],
-            "description_en": scene_row[3],
-            "description_ar": scene_row[4]
         } if scene_row else None
         conn.close()
 
@@ -320,4 +322,6 @@ class VideoAnalysisDB:
         }
 
 
+# إنشاء كائن قاعدة البيانات العالمي
 db = VideoAnalysisDB()
+
