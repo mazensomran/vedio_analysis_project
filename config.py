@@ -2,15 +2,14 @@ import os
 import torch
 from pathlib import Path
 from typing import List, Dict, Any
-import logging
-
-logger = logging.getLogger(__name__)
 
 # المسارات الأساسية
 BASE_DIR = Path(__file__).resolve().parent
+
+WORKING_DIR = Path("/kaggle/working/") # تعريف مجلد العمل الجديد
 UPLOAD_DIR = BASE_DIR / "uploads"
 OUTPUTS_DIR = BASE_DIR / "outputs"
-MODELS_DIR = BASE_DIR / "models"
+MODELS_DIR = BASE_DIR / "models" # يمكن أن يكون هذا داخل WORKING_DIR أو يبقى في BASE_DIR إذا كانت النماذج محملة مسبقًا
 DATABASE_DIR = BASE_DIR / "database"
 LOGS_DIR = BASE_DIR / "logs"
 
@@ -49,12 +48,13 @@ PROCESSING_CONFIG = {
     "target_width": 640,
     "target_height": 360,
     "target_fps": 15,
+    "enable_fast_processing": True,
     "max_workers": 2 if GPU_AVAILABLE else 1,
     "frame_sampling_interval": 2,  # أخذ عينة كل 10 إطارات
     "batch_size": 4 if GPU_AVAILABLE else 2,  # حجم الدفعة للمعالجة
 
     # إعدادات كشف الوجوه
-    "face_detection_threshold": 0.7,
+    "face_detection_threshold": 0.3,
     "min_face_size": 20,  # الحد الأدنى لحجم الوجه (بكسل)
     "max_face_size": 300,  # الحد الأقصى لحجم الوجه (بكسل)
     "face_aspect_ratio_min": 0.7,  # نسبة العرض إلى الارتفاع الدنيا للوجه
@@ -66,7 +66,7 @@ PROCESSING_CONFIG = {
     "min_face_size_for_enhancement": 50,  # الحد الأدنى لحجم الوجه للتحسين
 
     # إعدادات كشف الأشخاص
-    "person_detection_threshold": 0.7,
+    "person_detection_threshold": 0.5,
     "min_person_size": 50,  # الحد الأدنى لحجم الشخص (بكسل)
 
     # إعدادات كشف النص
@@ -103,7 +103,8 @@ PROCESSING_CONFIG = {
 # إعدادات النماذج
 MODEL_CONFIG = {
     # نماذج كشف الوجوه
-    "face_detection_model": "yolov8l-face.pt",
+    "face_detection_model": "yolov8m-face.pt",
+    "scrfd_model_path": "sscrfd.onnx",
     "available_face_models": [
         "yolov8n-face.pt",
         "yolov8s-face.pt",
@@ -145,6 +146,12 @@ MODEL_CONFIG = {
         "facebook/convnext-tiny-224"
     ],
 
+    # نماذج التتبع
+    "tracking_model": "bytetrack",
+    "available_tracking_models": ["bytetrack", "deepsort", "sort"],
+
+    "face_enhancement_model": "EDSR_x2.pt",
+
     # إعدادات الجهاز
     "device": "cuda" if GPU_AVAILABLE else "cpu",
     "precision": "fp32", # <--- CHANGE THIS LINE FROM "fp16" to "fp32"
@@ -168,10 +175,10 @@ EASYOCR_CONFIG = {
     "model_storage_directory": str(MODELS_DIR / "easyocr"),
     "download_enabled": True,
     "recog_network": "standard",
-    "detector": True,
-    "recognizer": True,
+    "detector": True,  # ✅ استخدام detector بدلاً من detector_enabled
+    "recognizer": True, # ✅ استخدام recognizer بدلاً من recognizer_enabled
     "batch_size": 10,
-    "model_precision": "fp16", # if GPU_AVAILABLE else "fp32"
+    "model_precision": "fp16", # if GPU_AVAILABLE else "fp32",  # ✅ استخدام fp32 بدلاً من fp16
     "detector_threshold": 0.3,
     "recognizer_threshold": 0.3,
     "text_min_size": 10,
@@ -352,9 +359,16 @@ def optimize_for_hardware():
 setup_directories()
 optimize_for_hardware()
 
+# طباعة معلومات التهيئة
+print("🎯 إعدادات نظام تحليل الفيديو:")
+print(f"🌐 عنوان التطبيق: {get_app_url()}")
+print(f"📁 مجلد التحميلات: {UPLOAD_DIR}")
+print(f"📁 مجلد المخرجات: {OUTPUTS_DIR}")
+print(
+    f"📊 ذاكرة GPU المتاحة: {get_available_memory().get('gpu_available', 0):.2f} GB" if GPU_AVAILABLE else "📊 لا يوجد GPU")
 
 # التحقق من الإعدادات
 if not check_processing_config():
-    logger.info("⚠️  هناك مشاكل في إعدادات المعالجة، قد يؤثر على الأداء")
+    print("⚠️  هناك مشاكل في إعدادات المعالجة، قد يؤثر على الأداء")
 
 print("✅ تم تحميل إعدادات التطبيق بنجاح")
