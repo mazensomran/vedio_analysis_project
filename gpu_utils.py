@@ -41,3 +41,4 @@ def print_gpu_memory_usage():
     if torch.cuda.is_available():
         allocated, reserved = get_gpu_memory_usage()
         print(f"💾 ذاكرة GPU المستخدمة: {allocated:.2f} GB / {reserved:.2f} GB محجوزة")
+        
