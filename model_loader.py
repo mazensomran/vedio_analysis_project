@@ -1,6 +1,5 @@
 
 import torch
-from ultralytics import YOLO
 from transformers import AutoImageProcessor
 import whisper
 import os
