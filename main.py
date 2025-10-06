@@ -4,7 +4,9 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+import uvicorn
 import shutil
+import threading
 import os
 import warnings
 import uuid
@@ -14,7 +16,7 @@ from pathlib import Path
 import json
 import torch
 import aiofiles
-
+import gc
 
 from processing_pipeline import process_video, get_processing_status, stop_video_processing, cleanup_processing
 from config import UPLOAD_DIR, OUTPUTS_DIR, APP_CONFIG, EASYOCR_CONFIG
@@ -67,7 +69,6 @@ async def lifespan(app: FastAPI):
     # تنظيف جميع العمليات النشطة
     for process_id in list(active_processes.keys()):
         stop_video_processing(process_id)
-
 
     cleanup_processing()
     logger.info("👋 إيقاف نظام تحليل الفيديو...")
@@ -644,6 +645,14 @@ HTML_TEMPLATE = """
                             <input type="checkbox" id="enableActivity" checked>
                             <label for="enableActivity">🎯 تحليل النشاط والبيئة</label>
                         </div>
+                        <div class="option-item" id="activityPromptContainer">
+                            <label for="activityPrompt">سؤالك بخصوص الفيديو (Prompt):</label>
+                            <input type="text" id="activityPrompt" class="form-control" value="Describe the main activities and environment in the video.">
+                        </div>
+                        <div class="option-item" id="activityFpsContainer">
+                            <label for="activityFps">دقة التحليل (FPS):</label>
+                            <input type="number" id="activityFps" class="form-control" value="1" min="0.1" step="0.1">
+                        </div>
                     </div>
 
                     <div class="processing-actions">
@@ -707,7 +716,8 @@ curl -X POST "{{base_url}}/analyze-video" \\
   -F "enable_face_detection=true" \\
   -F "enable_text_detection=true" \\
   -F "enable_tracking=true" \\
-  -F "enable_activity_recognition=true"
+  -F "enable_activity_recognition=true" \\
+  -F "activity_batch_processing=true"
 
 # الحصول على النتائج
 curl "{{base_url}}/results/process_id"
@@ -924,7 +934,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         });
     }
 
-    // Start video analysis
+        // Start video analysis
     async function analyzeVideo() {
         if (!window.selectedFile) {
             showStatus('يرجى اختيار ملف فيديو أولاً', 'error');
@@ -938,6 +948,15 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         formData.append('enable_text_detection', document.getElementById('enableText').checked);
         formData.append('enable_tracking', document.getElementById('enableTracking').checked);
         formData.append('enable_activity_recognition', document.getElementById('enableActivity').checked);
+        // إضافة قيم الـ prompt والـ fsp
+        if (document.getElementById('enableActivity').checked) {
+            formData.append('activity_prompt', document.getElementById('activityPrompt').value);
+            formData.append('activity_fps', document.getElementById('activityFps').value);
+        } else {
+            formData.append('activity_prompt', ''); // أو قيمة افتراضية أخرى
+            formData.append('activity_fps', '1'); // أو قيمة افتراضية أخرى
+        }
+
 
         try {
             showStatus('جاري رفع الفيديو وتحليله...', 'info');
@@ -1138,20 +1157,13 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
 
                 <div class="result-item">
                     <h3>🎯 تحليل النشاط والبيئة</h3>
-                    <p><strong>النشاط السائد:</strong> ${results.activity_analysis && results.activity_analysis.dominant_activity_ar ? results.activity_analysis.dominant_activity_ar : 'غير معروف'}</p>
-                    <p><strong>الوصف السائد:</strong> ${results.activity_analysis && results.activity_analysis.dominant_description_ar ? results.activity_analysis.dominant_description_ar : 'غير معروف'}</p>
-                    <p><strong>أكثر الأنشطة تكرارًا:</strong></p>
-                    <ul>
-                        ${results.activity_analysis && results.activity_analysis.top_activities_ar && results.activity_analysis.top_activities_ar.length > 0 ? results.activity_analysis.top_activities_ar.map(act => `<li>${act[0]} (${act[1]} مرات)</li>`).join('') : '<li>لا توجد أنشطة متوفرة</li>'}
-                    </ul>
-                    <p><strong>أكثر الأوصاف تكرارًا:</strong></p>
-                    <ul>
-                        ${results.activity_analysis && results.activity_analysis.top_descriptions_ar && results.activity_analysis.top_descriptions_ar.length > 0 ? results.activity_analysis.top_descriptions_ar.map(desc => `<li>${desc[0]} (${desc[1]} مرات)</li>`).join('') : '<li>لا توجد أوصاف متوفرة</li>'}
-                    </ul>
+                    <p><strong>تحليل النشاط والبيئة (إنجليزي):</strong> ${results.activity_analysis && results.activity_analysis.activity_analysis_en ? results.activity_analysis.activity_analysis_en : 'غير معروف'}</p>
+                    <p><strong>تحليل النشاط والبيئة (عربي):</strong> ${results.activity_analysis && results.activity_analysis.activity_analysis_ar ? results.activity_analysis.activity_analysis_ar : 'غير معروف'}</p>
+
                 </div>
             </div>
             `;
-        
+
         if (results.transcription && results.transcription.text) {
             html += `
                 <div class="result-card">
@@ -1164,7 +1176,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 </div>
             `;
         }
-        
+
         // Add the final results table here
         html += `
             <div id="finalResultsTableContainer" class="result-card">
@@ -1174,7 +1186,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 </table>
             </div>
         `;
-        
+
         // Add the download and action buttons section
         html += `
             <div class="result-card">
@@ -1240,82 +1252,9 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
 
         // Add activity analysis data
         if (results.activity_analysis) {
-                addRow('النشاط السائد', results.activity_analysis.dominant_activity_en || 'غير معروف');
-                addRow('النشاط السائد (عربي)', results.activity_analysis.dominant_activity_ar || 'غير معروف');
-                addRow('الوصف السائد', results.activity_analysis.dominant_description_en || 'غير معروف');
-                addRow('الوصف السائد (عربي)', results.activity_analysis.dominant_description_ar || 'غير معروف');
-                
-                // الأنشطة الأكثر تكرارًا
-                if (results.activity_analysis.top_activities && results.activity_analysis.top_activities.length > 0) {
-                    let topActivitiesHtml = '<ul>';
-                    results.activity_analysis.top_activities.forEach(act => {
-                        topActivitiesHtml += `<li>${act[0]} (${act[1]} مرات)</li>`;
-                    });
-                    topActivitiesHtml += '</ul>';
-                    addRow('أكثر الأنشطة تكرارًا ', topActivitiesHtml);
-                } else {
-                    addRow('أكثر الأنشطة تكرارًا', 'لا توجد');
-                }
-                
-                if (results.activity_analysis.top_activities_ar && results.activity_analysis.top_activities_ar.length > 0) {
-                    let topActivitiesHtml = '<ul>';
-                    results.activity_analysis.top_activities_ar.forEach(act => {
-                        topActivitiesHtml += `<li>${act[0]} (${act[1]} مرات)</li>`;
-                    });
-                    topActivitiesHtml += '</ul>';
-                    addRow('أكثر الأنشطة تكرارًا (عربي)', topActivitiesHtml);
-                } else {
-                    addRow('أكثر الأنشطة تكرارًا (عربي)', 'لا توجد');
-                }
+                addRow('تحليل النشاط والبيئة (انجليزي)', results.activity_analysis.activity_analysis_en || 'غير معروف');
+                addRow('تحليل النشاط والبيئة (عربي)', results.activity_analysis.activity_analysis_ar || 'غير معروف');
 
-                // الأوصاف الأكثر تكرارًا
-                if (results.activity_analysis.top_descriptions && results.activity_analysis.top_descriptions.length > 0) {
-                    let topDescriptionsHtml = '<ul>';
-                    results.activity_analysis.top_descriptions.forEach(desc => {
-                        topDescriptionsHtml += `<li>${desc[0]} (${desc[1]} مرات)</li>`;
-                    });
-                    topDescriptionsHtml += '</ul>';
-                    addRow('أكثر الأوصاف تكرارًا', topDescriptionsHtml);
-                } else {
-                    addRow('أكثر الأوصاف تكرارًا', 'لا توجد');
-                }
-                
-                if (results.activity_analysis.top_descriptions_ar && results.activity_analysis.top_descriptions_ar.length > 0) {
-                    let topDescriptionsHtml = '<ul>';
-                    results.activity_analysis.top_descriptions_ar.forEach(desc => {
-                        topDescriptionsHtml += `<li>${desc[0]} (${desc[1]} مرات)</li>`;
-                    });
-                    topDescriptionsHtml += '</ul>';
-                    addRow('أكثر الأوصاف تكرارًا (عربي)', topDescriptionsHtml);
-                } else {
-                    addRow('أكثر الأوصاف تكرارًا (عربي)', 'لا توجد');
-                }
-
-                // إضافة القيم الفريدة للنشاطات والتوصيفات (إذا كانت موجودة في final_results.json)
-                if (results.activity_analysis.unique_activities && results.activity_analysis.unique_activities.length > 0) {
-                    addRow('النشاطات الفريدة', `<ul>${results.activity_analysis.unique_activities.map(a => `<li>${a}</li>`).join('')}</ul>`);
-                } else {
-                    addRow('النشاطات الفريدة', 'لا توجد');
-                }
-                
-                if (results.activity_analysis.unique_activities_ar && results.activity_analysis.unique_activities_ar.length > 0) {
-                    addRow('النشاطات الفريدة (عربي)', `<ul>${results.activity_analysis.unique_activities_ar.map(a => `<li>${a}</li>`).join('')}</ul>`);
-                } else {
-                    addRow('النشاطات الفريدة', 'لا توجد');
-                }
-                
-                if (results.activity_analysis.unique_descriptions && results.activity_analysis.unique_descriptions.length > 0) {
-                    addRow('التوصيفات الفريدة', `<ul>${results.activity_analysis.unique_descriptions.map(d => `<li>${d}</li>`).join('')}</ul>`);
-                } else {
-                    addRow('التوصيفات الفريدة', 'لا توجد');
-                }
-
-                if (results.activity_analysis.unique_descriptions_ar && results.activity_analysis.unique_descriptions_ar.length > 0) {
-                    addRow('(عربي) التوصيفات الفريدة', `<ul>${results.activity_analysis.unique_descriptions_ar.map(d => `<li>${d}</li>`).join('')}</ul>`);
-                } else {
-                    addRow('التوصيفات الفريدة', 'لا توجد');
-                }
-                
                 if (results.processing_duration_seconds) {
                     addRow('زمن المعالجة', formatDuration(results.processing_duration_seconds));
                 }
@@ -1382,7 +1321,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         const modal = document.getElementById('outputModal');
         const fileListDiv = document.getElementById('outputFileList');
         const fileViewerDiv = document.getElementById('fileViewer');
-        fileListDiv.innerHTML = '<ul><li>جاري تحميل الملفات...</li></ul>';
+        fileListDiv.innerHTML = '<ul><li>جاري تحميل الملفات...</li></li></ul>';
         fileViewerDiv.innerHTML = '';
         modal.style.display = 'block';
 
@@ -1552,7 +1491,9 @@ async def analyze_video_endpoint(
         enable_face_detection: bool = Form(True),
         enable_text_detection: bool = Form(True),
         enable_tracking: bool = Form(True),
-        enable_activity_recognition: bool = Form(True)
+        enable_activity_recognition: bool = Form(True),
+        activity_prompt: Optional[str] = Form("Describe the main activities and environment in the video."), # إضافة prompt
+        activity_fps: Optional[float] = Form(1.0) # إضافة fsp
 ):
     try:
         if not file.content_type.startswith('video/'):
@@ -1576,12 +1517,15 @@ async def analyze_video_endpoint(
 
         # إعداد خيارات المعالجة
         processing_options = {
+            
             "enable_audio_transcription": enable_audio_transcription,
             "enable_face_detection": enable_face_detection,
             "enable_text_detection": enable_text_detection,
             "enable_tracking": enable_tracking,
             "enable_activity_recognition": enable_activity_recognition,
-            "original_filename": file.filename
+            "original_filename": file.filename,
+            "activity_prompt": activity_prompt, # تمرير الـ prompt
+            "activity_fps": activity_fps # تمرير الـ fsp
         }
 
         # إضافة العملية إلى القائمة النشطة
@@ -1781,5 +1725,4 @@ if __name__ == "__main__":
         port=APP_CONFIG["port"],
         log_level="info"
     )
-
 
