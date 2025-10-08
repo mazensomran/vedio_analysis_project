@@ -309,7 +309,7 @@ def process_video(input_path: str, process_id: str, options: Dict[str, Any]):
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         duration = total_frames / fps if fps > 0 else 0
-        detection_step = 1
+        detection_step = options.get("detection_step", 1)
         activity_analysis_fps = options.get("activity_fps", 1.0)
         if activity_analysis_fps <= 0:
             activity_analysis_fps = 1.0
@@ -332,9 +332,11 @@ def process_video(input_path: str, process_id: str, options: Dict[str, Any]):
             import gc
             gc.collect()
 
-        face_detector = FaceDetector() if options.get("enable_face_detection", True) else None
-        text_detector = TextDetector() if options.get("enable_text_detection", True) else None
-        object_tracker = ObjectTracker() if options.get(
+        face_detector = FaceDetector(face_threshold=options.get("face_threshold", 0.3)) if options.get(
+            "enable_face_detection", True) else None
+        text_detector = TextDetector(text_threshold=options.get("text_threshold", 0.3)) if options.get(
+            "enable_text_detection", True) else None
+        object_tracker = ObjectTracker(object_threshold=options.get("object_threshold", 0.5)) if options.get(
             "enable_tracking", True) else None
         activity_recognizer = ActivityRecognizer() if options.get("enable_activity_recognition", True) else None
         speech_recognizer = SpeechRecognizer() if options.get("enable_audio_transcription", True) else None
