@@ -234,13 +234,13 @@ def convert_serializable_types(obj: Any) -> Any:
     """
     if obj is None:
         return None
-    
+
     if isinstance(obj, dict):
         return {key: convert_serializable_types(value) for key, value in obj.items()}
-    
+
     if isinstance(obj, list):
         return [convert_serializable_types(item) for item in obj]
-    
+
     # التعامل مع PyTorch Tensors (السبب الرئيسي في التتبع)
     if isinstance(obj, torch.Tensor):
         if obj.numel() == 1:  # scalar tensor (مثل confidence)
@@ -248,7 +248,7 @@ def convert_serializable_types(obj: Any) -> Any:
         else:  # array tensor (مثل bbox)
             # نقل إلى CPU إذا كان على GPU، ثم تحويل إلى list
             return obj.cpu().tolist()
-    
+
     # التعامل مع NumPy types
     if isinstance(obj, np.integer):
         return int(obj)
@@ -256,9 +256,29 @@ def convert_serializable_types(obj: Any) -> Any:
         return float(obj)
     if isinstance(obj, np.ndarray):
         return obj.tolist()
-    
+
     # أنواع أخرى قياسية (لا نحتاج تحويل)
     return obj
+
+
+def convert_video_to_web_format(input_path: str, output_path: str) -> bool:
+    """تحويل الفيديو إلى تنسيق متوافق مع الويب"""
+    try:
+        if not Path(input_path).exists():
+            print(f"❌ ملف الفيديو الأصلي غير موجود: {input_path}")
+            return False
+
+        command = [
+            'ffmpeg', '-i', input_path,
+            '-c:v', 'libx264', '-preset', 'medium', '-crf', '23',
+            '-c:a', 'aac', '-movflags', '+faststart', '-pix_fmt', 'yuv420p',
+            output_path, '-y', '-loglevel', 'error'
+        ]
+        result = subprocess.run(command, capture_output=True, text=True)
+        return result.returncode == 0
+    except Exception as e:
+        print(f"❌ خطأ في تحويل الفيديو: {e}")
+        return False
 
 
 def process_video(input_path: str, process_id: str, options: Dict[str, Any]):
@@ -388,6 +408,19 @@ def process_video(input_path: str, process_id: str, options: Dict[str, Any]):
         else:
             db.update_process_status(process_id, "processing", 95, "جاري حفظ النتائج النهائية")
 
+        if out:
+            out.release()
+
+        # ⭐ تحويل الفيديو إلى تنسيق ويب
+        web_video_path = str(video_dir / "analyzed_video_web.mp4")
+        final_video_path = output_video_path  # افتراضيًا استخدم المسار الأصلي
+
+        if convert_video_to_web_format(output_video_path, web_video_path):
+            final_video_path = web_video_path
+            print("✅ تم تحويل الفيديو إلى تنسيق ويب متوافق")
+        else:
+            print("⚠️ فشل تحويل الفيديو، سيتم استخدام الفيديو الأصلي")
+
         if all_faces:
             faces_output_path = process_dir / "faces_data.json"
             with open(faces_output_path, 'w', encoding='utf-8') as f:
@@ -463,7 +496,9 @@ def process_video(input_path: str, process_id: str, options: Dict[str, Any]):
             "processing_options": options,
             "face_enhancement_enabled": options.get("enable_face_enhancement", False),
             "processing_status": "stopped" if get_stop_processing() else "completed",
-            "processing_duration_seconds": processing_duration
+            "processing_duration_seconds": processing_duration,
+            "analyzed_video_path": str(Path(final_video_path).relative_to(OUTPUTS_DIR / process_id)),
+            "video_filename": Path(final_video_path).name
 
         }
 
