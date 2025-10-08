@@ -27,12 +27,12 @@ device = model_loader.device
 
 
 class FaceDetector:
-    def __init__(self):
+    def __init__(self, face_threshold=0.3):
         self.scrfd_detector = SCRFD.from_path("scrfd.onnx", providers=["CUDAExecutionProvider"])
 
         if self.scrfd_detector is None:
             raise Exception("فشل تحميل نموذج SCRFD لكشف الوجوه.")
-        self.threshold = Threshold(probability=PROCESSING_CONFIG["face_detection_threshold"])
+        self.threshold = Threshold(probability=face_threshold)
         self.frame_counter = 0
         self.sampling_interval = PROCESSING_CONFIG["frame_sampling_interval"]
 
@@ -166,8 +166,8 @@ class FrameEnhancer:
 
 
 class TextDetector:
-    def __init__(self):
-        self.detection_threshold = PROCESSING_CONFIG["text_detection_threshold"]
+    def __init__(self, text_threshold=0.3):
+        self.detection_threshold  = text_threshold
         self.enabled = PROCESSING_CONFIG["text_detection_enabled"]
         self.min_text_confidence = PROCESSING_CONFIG["min_text_confidence"]
         self.languages = MODEL_CONFIG["easyocr_languages"]
@@ -357,7 +357,7 @@ class SpeechRecognizer:
 
 
 class ObjectTracker:
-    def __init__(self):
+    def __init__(self, object_threshold=0.5):
         # 1. تعريف self.device أولاً (قبل أي تحميل)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -372,7 +372,7 @@ class ObjectTracker:
         self.trace_annotator = None
         self.sampling_interval = PROCESSING_CONFIG["frame_sampling_interval"]
         self.min_track_length = PROCESSING_CONFIG.get("min_track_length", 5)
-        self.detection_threshold = PROCESSING_CONFIG.get("object_detection_threshold", 0.3)
+        self.detection_threshold  = object_threshold
         self.confidence_threshold = PROCESSING_CONFIG.get("object_confidence_threshold", 0.5)
 
         # 3. محاولة تحميل النموذج
