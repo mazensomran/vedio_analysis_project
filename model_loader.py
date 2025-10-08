@@ -12,7 +12,7 @@ from config import MODELS_DIR, MODEL_CONFIG, PROCESSING_CONFIG, GPU_AVAILABLE
 from transformers import AutoProcessor, AutoModelForVision2Seq
 from transformers import Qwen2VLForConditionalGeneration, Qwen2VLProcessor
 from scrfd import SCRFD, Threshold
-
+import torch
 # إعداد التسجيل
 logger = logging.getLogger(__name__)
 
@@ -136,12 +136,11 @@ class ModelLoader:
         try:
             logger.info(f"📥 جاري تحميل نموذج Qwen2-VL: {model_name}")
             # استخدام AutoProcessor و AutoModelForVision2Seq
-            model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2-VL-2B-Instruct", torch_dtype="auto", device_map="auto")
+            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            model = Qwen2VLForConditionalGeneration.from_pretrained("Qwen/Qwen2-VL-2B-Instruct", torch_dtype="auto")
+            model.to( self.device )
             # default processer
             processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-2B-Instruct")
-
-            model.to(self.device)
-
             self.model_cache[cache_key] = (processor, model)
             logger.info(f"✅ تم تحميل نموذج Qwen2-VL: {model_name} بنجاح على {self.device}")
             return processor, model
