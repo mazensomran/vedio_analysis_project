@@ -1086,7 +1086,11 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
 
     // Generate HTML for the results
     function generateResultsHTML(results) {
-        const analyzedVideoPath = `/outputs/${currentProcessId}/video/analyzed_video.mp4`;
+        const analyzedVideoPath = results.analyzed_video_path 
+        ? `/outputs/${currentProcessId}/${results.analyzed_video_path}`
+        : `/outputs/${currentProcessId}/video/analyzed_video.mp4`;
+
+        const videoWithTimestamp = `${analyzedVideoPath}?t=${Date.now()}`;
         const facesFolderPath = `/outputs/${currentProcessId}/faces/`;
         const outputFolderPath = `/outputs/${currentProcessId}/`;
 
@@ -1102,9 +1106,11 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
 
             <div class="result-card">
                 <h3>🎥 الفيديو المحلل</h3>
-                <video class="video-preview" controls src="${analyzedVideoPath}">
+                <video class="video-preview" controls preload="metadata">
+                    <source src="${videoWithTimestamp}" type="video/mp4">
                     متصفحك لا يدعم تشغيل الفيديو.
                 </video>
+                <p><small>مسار الفيديو: ${results.video_filename || 'analyzed_video.mp4'}</small></p>
             </div>
 
             <div class="results-grid">
@@ -1492,8 +1498,9 @@ async def analyze_video_endpoint(
         enable_text_detection: bool = Form(True),
         enable_tracking: bool = Form(True),
         enable_activity_recognition: bool = Form(True),
-        activity_prompt: Optional[str] = Form("Describe the main activities and environment in the video."), # إضافة prompt
-        activity_fps: Optional[float] = Form(1.0) # إضافة fsp
+        activity_prompt: Optional[str] = Form("Describe the main activities and environment in the video."),
+        # إضافة prompt
+        activity_fps: Optional[float] = Form(1.0)  # إضافة fsp
 ):
     try:
         if not file.content_type.startswith('video/'):
@@ -1517,15 +1524,15 @@ async def analyze_video_endpoint(
 
         # إعداد خيارات المعالجة
         processing_options = {
-            
+
             "enable_audio_transcription": enable_audio_transcription,
             "enable_face_detection": enable_face_detection,
             "enable_text_detection": enable_text_detection,
             "enable_tracking": enable_tracking,
             "enable_activity_recognition": enable_activity_recognition,
             "original_filename": file.filename,
-            "activity_prompt": activity_prompt, # تمرير الـ prompt
-            "activity_fps": activity_fps # تمرير الـ fsp
+            "activity_prompt": activity_prompt,  # تمرير الـ prompt
+            "activity_fps": activity_fps  # تمرير الـ fsp
         }
 
         # إضافة العملية إلى القائمة النشطة
