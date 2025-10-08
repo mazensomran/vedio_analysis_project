@@ -10,11 +10,25 @@ from translation_utils import MarianTranslator
 #from qwen2_VL import Qwen2_VL # تأكد من وجود هذا الاستيراد
 from PIL import Image
 from qwen_vl_utils import process_vision_info
+import traceback
 
 logger = logging.getLogger(__name__)
 
 model_loader = ModelLoader()
 translator = MarianTranslator() # تهيئة المترجم هنا
+
+
+def move_to_device(obj, device):
+    """نقل كل tensors داخل dict/list/tensor إلى نفس الجهاز"""
+    if torch.is_tensor(obj):
+        return obj.to(device)
+    elif isinstance(obj, dict):
+        return {k: move_to_device(v, device) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [move_to_device(v, device) for v in obj]
+    else:
+        return obj
+
 
 class ActivityRecognizer:
 
@@ -23,17 +37,20 @@ class ActivityRecognizer:
         try:
             # تحميل نموذج Qwen2-VL فقط
             self.qwen2_vl_proc, self.qwen2_vl_model = model_loader.load_qwen2_vl_model()
-
             if self.qwen2_vl_model is None:
                 raise Exception("فشل تحميل نموذج Qwen2-VL.")
-
-            self.device = next(self.qwen2_vl_model.parameters()).device
+            
+            # device=torch.device("cuda:0")
+            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            # self.device =device  #next(self.qwen2_vl_model.parameters()).device
+            self.qwen2_vl_model = self.qwen2_vl_model.to(self.device)
+            # self.qwen2_vl_model.parameters().to(device)
             self.qwen2_vl_model.eval()
-            print(f"✅ تم تهيئة ActivityRecognizer بنجاح بنموذج Qwen2-VL.")
+            print(f"✅ تم تهيئة ActivityRecognizer بنجاح بنموذج Qwen2-VL على {self.device}.")
         except Exception as e:
             self.qwen2_vl_model = None
             self.device = None
-            print(f"❌ فشل تهيئة ActivityRecognizer. فشل تحميل النماذج: {e}")
+            print(f"❌ فشل تهيئة ActivityRecognizer. فشل تحميل النماذج: {e}   traceback  {traceback.format_exc()}")
 
 
     def recognize_activity(self,prompt:str, video_path: str, fsp: float, pixels_size: int):
@@ -70,7 +87,11 @@ class ActivityRecognizer:
             padding=True,
             return_tensors="pt",
         )
-        inputs = inputs.to(self.device) 
+        # inputs = move_to_device(inputs, self.device)
+        # device = next(model.parameters()).device
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        # inputs = inputs.to(self.device) 
         # Inference مع no_grad لتوفير الذاكرة
         with torch.no_grad():
             generated_ids = self.qwen2_vl_model.generate( 
@@ -78,9 +99,12 @@ class ActivityRecognizer:
                 max_new_tokens=150
             )
         # Trim the generated output to remove the input prompt
+        # generated_ids_trimmed = [
+        #     out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+        # ]
         generated_ids_trimmed = [
-            out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        ]
+                 out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
+            ]
         # تفريغ فوري بعد الاستدلال
         del inputs  # حذف المدخلات
         torch.cuda.empty_cache()
