@@ -583,6 +583,135 @@ HTML_TEMPLATE = """
             padding: 2px 0;
         }
 
+                /* شبكة الإحصائيات */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* عناصر تحكم الفيديو */
+        .video-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .video-controls {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.8rem;
+        }
+
+        .video-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-top: 1rem;
+        }
+
+        .video-info p {
+            margin: 0.3rem 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* عناصر التحكم بالجدول */
+        .table-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            min-width: 200px;
+        }
+
+        .filter-select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            background: white;
+        }
+
+        .results-table-container {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .slider + span {
+            font-weight: bold;
+            color: var(--secondary-color);
+            display: block;
+        }
+        textarea.form-control {
+            width: 100%;
+            min-height: 80px;
+            resize: vertical; /* يسمح بالتوسع العمودي فقط */
+            font-family: inherit;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+        }
+        textarea.form-control:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+        .slider + span {
+            font-weight: bold;
+            color: var(--secondary-color);
+            display: block;
+        }
+        small {
+            color: #666;
+            font-size: 0.8em;
+            display: block;
+            margin-top: 5px;
+        }
+
     </style>
 </head>
 <body>
@@ -625,29 +754,50 @@ HTML_TEMPLATE = """
 
 
                     <div class="options-grid">
+                        <div class="option-item" id="detectionStepContainer">
+                            <label for="detectionStep">خطوة الكشف (للتسريع، 1=كل إطار):</label>
+                            <input type="range" id="detectionStep" min="1" max="10" step="1" value="1" class="slider">
+                            <span id="detectionStepValue">1</span>
+                            <small>زيادة القيمة تسرع المعالجة لكن تقلل الدقة</small>
+                        </div>
                         <div class="option-item">
-                            <input type="checkbox" id="enableAudio" checked>
+                            <input type="checkbox" id="enableAudio" >
                             <label for="enableAudio">🎵 تحويل الصوت إلى نص</label>
                         </div>
                         <div class="option-item">
-                            <input type="checkbox" id="enableFaces" checked>
+                            <input type="checkbox" id="enableFaces" >
                             <label for="enableFaces">👥 اكتشاف الوجوه</label>
                         </div>
+                        <div class="option-item" id="faceThresholdContainer";">
+                            <label for="faceThreshold">عتبة كشف الوجوه (0.1 - 1.0):</label>
+                            <input type="range" id="faceThreshold" min="0.1" max="1.0" step="0.01" value="0.3" class="slider">
+                            <span id="faceThresholdValue">0.3</span>
+                        </div>
                         <div class="option-item">
-                            <input type="checkbox" id="enableText" checked>
+                            <input type="checkbox" id="enableText" >
                             <label for="enableText">📝 استخراج النصوص</label>
                         </div>
-                        <div class="option-item">
-                            <input type="checkbox" id="enableTracking" checked>
-                            <label for="enableTracking">🔄 تتبع حركة الأشخاص</label>
+                        <div class="option-item" id="textThresholdContainer";">
+                            <label for="textThreshold">عتبة كشف النصوص (0.1 - 1.0):</label>
+                            <input type="range" id="textThreshold" min="0.1" max="1.0" step="0.01" value="0.3" class="slider">
+                            <span id="textThresholdValue">0.3</span>
                         </div>
                         <div class="option-item">
-                            <input type="checkbox" id="enableActivity" checked>
+                            <input type="checkbox" id="enableTracking" >
+                            <label for="enableTracking">🔄 تتبع حركة الأشخاص</label>
+                        </div>
+                        <div class="option-item" id="objectThresholdContainer";">
+                            <label for="objectThreshold">عتبة كشف الكائنات (0.1 - 1.0):</label>
+                            <input type="range" id="objectThreshold" min="0.1" max="01.0" step="0.01" value="0.5" class="slider">
+                            <span id="objectThresholdValue">0.5</span>
+                        </div>
+                        <div class="option-item">
+                            <input type="checkbox" id="enableActivity" >
                             <label for="enableActivity">🎯 تحليل النشاط والبيئة</label>
                         </div>
                         <div class="option-item" id="activityPromptContainer">
                             <label for="activityPrompt">سؤالك بخصوص الفيديو (Prompt):</label>
-                            <input type="text" id="activityPrompt" class="form-control" value="Describe the main activities and environment in the video.">
+                            <textarea id="activityPrompt" rows="3" class="form-control" placeholder="اكتب مطالبة مفصلة هنا...">Describe the main activities and environment in the video.</textarea>
                         </div>
                         <div class="option-item" id="activityFpsContainer">
                             <label for="activityFps">دقة التحليل (FPS):</label>
@@ -804,6 +954,141 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         checkServerStatus();
         updateApiExamples();
         checkActiveProcesses();
+        
+
+        // تحكم في عتبة الوجوه
+        document.getElementById('enableFaces').addEventListener('change', function() {
+            const container = document.getElementById('faceThresholdContainer');
+            const slider = document.getElementById('faceThreshold');
+            if (this.checked) {
+                container.style.display = 'block';
+                slider.disabled = false;
+            } else {
+                container.style.display = 'none';
+                slider.disabled = true;
+            }
+        });
+
+        // تحكم في عتبة النصوص
+        document.getElementById('enableText').addEventListener('change', function() {
+            const container = document.getElementById('textThresholdContainer');
+            const slider = document.getElementById('textThreshold');
+            if (this.checked) {
+                container.style.display = 'block';
+                slider.disabled = false;
+            } else {
+                container.style.display = 'none';
+                slider.disabled = true;
+            }
+        });
+        // تحكم في عتبة الكائنات
+        document.getElementById('enableTracking').addEventListener('change', function() {
+            const container = document.getElementById('objectThresholdContainer');
+            const slider = document.getElementById('objectThreshold');
+            if (this.checked) {
+                container.style.display = 'block';
+                slider.disabled = false;
+            } else {
+                container.style.display = 'none';
+                slider.disabled = true;
+            }
+        });
+
+        // دالة مساعدة للتحكم في container بناءً على checkbox
+        function toggleContainer(checkboxId, containerId, sliderId) {
+            const checkbox = document.getElementById(checkboxId);
+            const container = document.getElementById(containerId);
+            const slider = document.getElementById(sliderId);
+
+            // التحقق الافتراضي عند التحميل (يظهر إذا كان checkbox محدد)
+            if (checkbox.checked) {
+                container.style.display = 'block';
+                slider.disabled = false;
+            } else {
+                container.style.display = 'none';
+                slider.disabled = true;
+            }
+
+            // Event listener للتغييرات اللاحقة
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    container.style.display = 'block';
+                    slider.disabled = false;
+                } else {
+                    container.style.display = 'none';
+                    slider.disabled = true;
+                }
+            });
+        }
+
+        // تطبيق الدالة على كل checkbox (للظهور الافتراضي والتحكم)
+        toggleContainer('enableFaces', 'faceThresholdContainer', 'faceThreshold');
+        toggleContainer('enableText', 'textThresholdContainer', 'textThreshold');
+        toggleContainer('enableTracking', 'objectThresholdContainer', 'objectThreshold');
+        
+        // إضافة جديدة: تحكم في عناصر تحليل النشاط والبيئة (prompt و FPS)
+        function toggleActivityContainers(checkboxId, promptContainerId, fpsContainerId) {
+            const checkbox = document.getElementById(checkboxId);
+            const promptContainer = document.getElementById(promptContainerId);
+            const fpsContainer = document.getElementById(fpsContainerId);
+            const promptTextarea = document.getElementById('activityPrompt');
+            const fpsInput = document.getElementById('activityFps');
+            
+            // التحقق الافتراضي عند التحميل (يظهر إذا كان checkbox محدد)
+            if (checkbox.checked) {
+                promptContainer.style.display = 'block';
+                fpsContainer.style.display = 'block';
+                if (promptTextarea) promptTextarea.disabled = false;
+                if (fpsInput) fpsInput.disabled = false;
+            } else {
+                promptContainer.style.display = 'none';
+                fpsContainer.style.display = 'none';
+                if (promptTextarea) promptTextarea.disabled = true;
+                if (fpsInput) fpsInput.disabled = true;
+            }
+            
+            // Event listener للتغييرات اللاحقة
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    promptContainer.style.display = 'block';
+                    fpsContainer.style.display = 'block';
+                    if (promptTextarea) promptTextarea.disabled = false;
+                    if (fpsInput) fpsInput.disabled = false;
+                } else {
+                    promptContainer.style.display = 'none';
+                    fpsContainer.style.display = 'none';
+                    if (promptTextarea) promptTextarea.disabled = true;
+                    if (fpsInput) fpsInput.disabled = true;
+                }
+            });
+        }
+        
+        toggleActivityContainers('enableActivity', 'activityPromptContainer', 'activityFpsContainer');
+        
+        // تحديث قيم السلايدرز (لعرض القيمة الحالية)
+
+        function updateSliderValue(sliderId, valueId) {
+            const slider = document.getElementById(sliderId);
+            const valueSpan = document.getElementById(valueId);
+            if (slider && valueSpan) {
+                slider.addEventListener('input', function() {
+                    valueSpan.textContent = this.value;
+                });
+                // تعيين القيمة الأولية
+                valueSpan.textContent = slider.value;
+            }
+        }
+        updateSliderValue('detectionStep', 'detectionStepValue');
+        updateSliderValue('faceThreshold', 'faceThresholdValue');
+        updateSliderValue('textThreshold', 'textThresholdValue');
+        updateSliderValue('objectThreshold', 'objectThresholdValue');
+
+        // توسيع textarea تلقائياً (اختياري لتحسين UX)
+        const textarea = document.getElementById('activityPrompt');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
     });
 
     // Setup drag and drop for files
@@ -948,6 +1233,10 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         formData.append('enable_text_detection', document.getElementById('enableText').checked);
         formData.append('enable_tracking', document.getElementById('enableTracking').checked);
         formData.append('enable_activity_recognition', document.getElementById('enableActivity').checked);
+        formData.append('face_threshold', document.getElementById('faceThreshold').value);
+        formData.append('text_threshold', document.getElementById('textThreshold').value);
+        formData.append('object_threshold', document.getElementById('objectThreshold').value);
+        formData.append('detection_step', document.getElementById('detectionStep').value || 1);
         // إضافة قيم الـ prompt والـ fsp
         if (document.getElementById('enableActivity').checked) {
             formData.append('activity_prompt', document.getElementById('activityPrompt').value);
@@ -1086,102 +1375,106 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
 
     // Generate HTML for the results
     function generateResultsHTML(results) {
-        const analyzedVideoPath = results.analyzed_video_path 
-        ? `/outputs/${currentProcessId}/${results.analyzed_video_path}`
-        : `/outputs/${currentProcessId}/video/analyzed_video.mp4`;
+        let html = '';
 
-        const videoWithTimestamp = `${analyzedVideoPath}?t=${Date.now()}`;
-        const facesFolderPath = `/outputs/${currentProcessId}/faces/`;
-        const outputFolderPath = `/outputs/${currentProcessId}/`;
+    // ⭐⭐ الإضافات الجديدة - ابدأ بها ⭐⭐
 
-        let html = `
-            <div class="result-card">
-                <h3>📊 نظرة عامة على التحليل</h3>
-                <p>حالة المعالجة: <strong>${results.status === 'completed' ? 'مكتمل' : 'متوقف'}</strong></p>
-                <p>عدد الإطارات: <strong>${results.total_frames || 0}</strong></p>
-                <p>الإطارات المعالجة: <strong>${results.frames_processed || 0}</strong></p>
-                <p>مدة الفيديو: <strong>${results.duration_seconds ? formatDuration(results.duration_seconds) : 'غير معروف'}</strong></p>
-                <p>معدل الإطارات (FPS): <strong>${results.fps ? results.fps.toFixed(2) : 'غير معروف'}</strong></p>
-            </div>
+    // إضافة الإحصائيات السريعة
+    html += createQuickStats(results);
 
-            <div class="result-card">
-                <h3>🎥 الفيديو المحلل</h3>
-                <video class="video-preview" controls preload="metadata">
-                    <source src="${videoWithTimestamp}" type="video/mp4">
-                    متصفحك لا يدعم تشغيل الفيديو.
-                </video>
-                <p><small>مسار الفيديو: ${results.video_filename || 'analyzed_video.mp4'}</small></p>
-            </div>
+    // إضافة معاينة الفيديو المحسنة
+    html += createVideoPlayer(results);
 
-            <div class="results-grid">
-                <div class="result-item">
-                    <h3>👥 الوجوه المكتشفة</h3>
-                    <p>الإجمالي: <strong>${results.faces_detected || 0}</strong></p>
-                    ${results.faces_data && results.faces_data.length > 0 ? `
-                        <div class="face-grid">
-                            ${results.faces_data.slice(0, 8).map(face => `
-                                <div class="face-item">
-                                    <img src="/outputs/${currentProcessId}/faces/${face.image_path?.split('/').pop() || 'default.jpg'}"
-                                         alt="Face" class="face-image"
-                                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiM5OTkiPvCfpqjwn5CSPC90ZXh0Pjwvc3ZnPg=='">
-                                    <p>الإطار: ${face.frame_number}</p>
-                                    <p>الثقة: ${Math.round(face.confidence * 100)}%</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : '<p>لم يتم اكتشاف أي وجوه</p>'}
-                </div>
+    // إضافة الجدول التفاعلي
+    html += createInteractiveTable(results);
 
-                <div class="result-item">
-                    <h3>📝 النصوص المستخرجة</h3>
-                    <p>الإجمالي: <strong>${results.texts_detected || 0}</strong></p>
-                    ${results.extracted_texts && results.extracted_texts.length > 0 ? `
-                        ${results.extracted_texts.slice(0, 5).map(text => `
-                            <div class="result-card">
-                                <p><strong>${text.text}</strong></p>
-                                <p>الإطار: ${text.frame_number} | الثقة: ${Math.round(text.confidence * 100)}%</p>
-                                <p>اللغة: ${text.language === 'ar' ? 'عربي' : 'إنجليزي'}</p>
+
+    const analyzedVideoPath = results.analyzed_video_path 
+    ? `/outputs/${currentProcessId}/${results.analyzed_video_path}`
+    : `/outputs/${currentProcessId}/video/analyzed_video.mp4`;
+
+    const videoWithTimestamp = `${analyzedVideoPath}?t=${Date.now()}`;
+    const facesFolderPath = `/outputs/${currentProcessId}/faces/`;
+    const outputFolderPath = `/outputs/${currentProcessId}/`;
+
+    html += `
+        <div class="result-card">
+            <h3>📊 نظرة عامة على التحليل</h3>
+            <p>حالة المعالجة: <strong>${results.status === 'completed' ? 'مكتمل' : 'متوقف'}</strong></p>
+            <p>عدد الإطارات: <strong>${results.total_frames || 0}</strong></p>
+            <p>الإطارات المعالجة: <strong>${results.frames_processed || 0}</strong></p>
+            <p>مدة الفيديو: <strong>${results.duration_seconds ? formatDuration(results.duration_seconds) : 'غير معروف'}</strong></p>
+            <p>معدل الإطارات (FPS): <strong>${results.fps ? results.fps.toFixed(2) : 'غير معروف'}</strong></p>
+        </div>
+
+        <div class="results-grid">
+            <div class="result-item">
+                <h3>👥 الوجوه المكتشفة</h3>
+                <p>الإجمالي: <strong>${results.faces_detected || 0}</strong></p>
+                ${results.faces_data && results.faces_data.length > 0 ? `
+                    <div class="face-grid">
+                        ${results.faces_data.slice(0, 8).map(face => `
+                            <div class="face-item">
+                                <img src="/outputs/${currentProcessId}/faces/${face.image_path?.split('/').pop() || 'default.jpg'}"
+                                     alt="Face" class="face-image"
+                                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiM5OTkiPvCfpqjwn5CSPC90ZXh0Pjwvc3ZnPg=='">
+                                <p>الإطار: ${face.frame_number}</p>
+                                <p>الثقة: ${Math.round(face.confidence * 100)}%</p>
                             </div>
                         `).join('')}
-                    ` : '<p>لم يتم استخراج أي نصوص</p>'}
-                </div>
-            </div>
-
-            <div class="results-grid">
-                <div class="result-item">
-                    <h3>🔄 تتبع الأشخاص</h3>
-                    <p>عدد المسارات: <strong>${results.tracks_detected || 0}</strong></p>
-                    ${results.tracking_data && results.tracking_data.length > 0 ? `
-                        ${Array.from(new Set(results.tracking_data.map(t => t.track_id))).slice(0, 3).map(trackId => `
-                            <div class="person-track">
-                                <p><strong>الشخص ${trackId}</strong></p>
-                                <p>تم تتبعه في ${results.tracking_data.filter(t => t.track_id === trackId).length} إطار</p>
-                            </div>
-                        `).join('')}
-                    ` : '<p>لم يتم تتبع أي أشخاص</p>'}
-                </div>
-
-                <div class="result-item">
-                    <h3>🎯 تحليل النشاط والبيئة</h3>
-                    <p><strong>تحليل النشاط والبيئة (إنجليزي):</strong> ${results.activity_analysis && results.activity_analysis.activity_analysis_en ? results.activity_analysis.activity_analysis_en : 'غير معروف'}</p>
-                    <p><strong>تحليل النشاط والبيئة (عربي):</strong> ${results.activity_analysis && results.activity_analysis.activity_analysis_ar ? results.activity_analysis.activity_analysis_ar : 'غير معروف'}</p>
-
-                </div>
-            </div>
-            `;
-
-        if (results.transcription && results.transcription.text) {
-            html += `
-                <div class="result-card">
-                    <h3>🎵 تحليل الصوت</h3>
-                    <p>اللغة: <strong>${results.transcription.language || 'غير معروفة'}</strong></p>
-                    <p>النص الكامل:</p>
-                    <div class="result-card">
-                        <p style="white-space: pre-wrap;">${results.transcription.text}</p>
                     </div>
+                ` : '<p>لم يتم اكتشاف أي وجوه</p>'}
+            </div>
+
+            <div class="result-item">
+                <h3>📝 النصوص المستخرجة</h3>
+                <p>الإجمالي: <strong>${results.texts_detected || 0}</strong></p>
+                ${results.extracted_texts && results.extracted_texts.length > 0 ? `
+                    ${results.extracted_texts.slice(0, 5).map(text => `
+                        <div class="result-card">
+                            <p><strong>${text.text}</strong></p>
+                            <p>الإطار: ${text.frame_number} | الثقة: ${Math.round(text.confidence * 100)}%</p>
+                            <p>اللغة: ${text.language === 'ar' ? 'عربي' : 'إنجليزي'}</p>
+                        </div>
+                    `).join('')}
+                ` : '<p>لم يتم استخراج أي نصوص</p>'}
+            </div>
+        </div>
+
+        <div class="results-grid">
+            <div class="result-item">
+                <h3>🔄 تتبع الأشخاص</h3>
+                <p>عدد المسارات: <strong>${results.tracks_detected || 0}</strong></p>
+                ${results.tracking_data && results.tracking_data.length > 0 ? `
+                    ${Array.from(new Set(results.tracking_data.map(t => t.track_id))).slice(0, 3).map(trackId => `
+                        <div class="person-track">
+                            <p><strong>الشخص ${trackId}</strong></p>
+                            <p>تم تتبعه في ${results.tracking_data.filter(t => t.track_id === trackId).length} إطار</p>
+                        </div>
+                    `).join('')}
+                ` : '<p>لم يتم تتبع أي أشخاص</p>'}
+            </div>
+
+            <div class="result-item">
+                <h3>🎯 تحليل النشاط والبيئة</h3>
+                <p><strong>تحليل النشاط والبيئة (إنجليزي):</strong> ${results.activity_analysis && results.activity_analysis.activity_analysis_en ? results.activity_analysis.activity_analysis_en : 'غير معروف'}</p>
+                <p><strong>تحليل النشاط والبيئة (عربي):</strong> ${results.activity_analysis && results.activity_analysis.activity_analysis_ar ? results.activity_analysis.activity_analysis_ar : 'غير معروف'}</p>
+            </div>
+        </div>
+        `;
+
+    if (results.transcription && results.transcription.text) {
+        html += `
+            <div class="result-card">
+                <h3>🎵 تحليل الصوت</h3>
+                <p>اللغة: <strong>${results.transcription.language || 'غير معروفة'}</strong></p>
+                <p>النص الكامل:</p>
+                <div class="result-card">
+                    <p style="white-space: pre-wrap;">${results.transcription.text}</p>
                 </div>
-            `;
-        }
+            </div>
+        `;
+    }
 
         // Add the final results table here
         html += `
@@ -1453,6 +1746,226 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         showTab('upload');
         showStatus('جاهز لتحليل فيديو جديد', 'info');
     }
+
+        // إنشاء الإحصائيات السريعة
+    function createQuickStats(results) {
+        return `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <div class="stat-number">${results.faces_detected || 0}</div>
+                    <div class="stat-label">الوجوه</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📝</div>
+                <div class="stat-info">
+                    <div class="stat-number">${results.texts_detected || 0}</div>
+                    <div class="stat-label">النصوص</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔄</div>
+                <div class="stat-info">
+                    <div class="stat-number">${results.tracks_detected || 0}</div>
+                    <div class="stat-label">المسارات</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-info">
+                    <div class="stat-number">${results.processing_duration_seconds ? Math.round(results.processing_duration_seconds) : 0}</div>
+                    <div class="stat-label">ثانية</div>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+
+    // إنشاء مشغل الفيديو مع عناصر التحكم
+    function createVideoPlayer(results) {
+        const analyzedVideoPath = results.analyzed_video_path 
+            ? `/outputs/${currentProcessId}/${results.analyzed_video_path}`
+            : `/outputs/${currentProcessId}/video/analyzed_video.mp4`;
+
+        return `
+        <div class="result-card">
+            <h3>🎥 الفيديو المحلل</h3>
+            <div class="video-container">
+                <video id="mainVideo" class="video-preview" controls preload="metadata">
+                    <source src="${analyzedVideoPath}?t=${Date.now()}" type="video/mp4">
+                    متصفحك لا يدعم تشغيل الفيديو.
+                </video>
+                <div class="video-controls">
+                    <button onclick="togglePlayPause()" class="btn btn-small">⏯️ تشغيل/إيقاف</button>
+                    <button onclick="skipBackward()" class="btn btn-small">⏪ 5 ثوانٍ</button>
+                    <button onclick="skipForward()" class="btn btn-small">⏩ 5 ثوانٍ</button>
+                    <button onclick="toggleFullscreen()" class="btn btn-small">📺 ملء الشاشة</button>
+                    <button onclick="downloadVideo('${analyzedVideoPath}')" class="btn btn-small">📥 تحميل</button>
+                </div>
+            </div>
+            <div class="video-info">
+                <p><strong>الدقة:</strong> ${results.resolution || 'غير معروف'}</p>
+                <p><strong>المدة:</strong> ${results.duration_seconds ? formatDuration(results.duration_seconds) : 'غير معروف'}</p>
+                <p><strong>معدل الإطارات:</strong> ${results.fps ? results.fps.toFixed(2) + ' fps' : 'غير معروف'}</p>
+            </div>
+        </div>
+        `;
+    }
+
+    // دوال التحكم بالفيديو
+    function togglePlayPause() {
+        const video = document.getElementById('mainVideo');
+        if (video.paused) {
+            video.play();
+        } else {
+            video.pause();
+        }
+    }
+
+    function skipBackward() {
+        const video = document.getElementById('mainVideo');
+        video.currentTime = Math.max(0, video.currentTime - 5);
+    }
+
+    function skipForward() {
+        const video = document.getElementById('mainVideo');
+        video.currentTime = Math.min(video.duration, video.currentTime + 5);
+    }
+
+    function toggleFullscreen() {
+        const video = document.getElementById('mainVideo');
+        if (!document.fullscreenElement) {
+            video.requestFullscreen().catch(err => {
+                console.log(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    function downloadVideo(videoPath) {
+        const link = document.createElement('a');
+        link.href = videoPath;
+        link.download = 'analyzed_video.mp4';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // إنشاء جدول تفاعلي للنتائج
+    function createInteractiveTable(results) {
+        return `
+        <div class="result-card">
+            <h3>📋 النتائج التفصيلية</h3>
+            <div class="table-controls">
+                <input type="text" id="searchTable" placeholder="🔍 ابحث في النتائج..." class="search-input" onkeyup="filterTable()">
+                <select id="filterCategory" class="filter-select" onchange="filterTable()">
+                    <option value="all">جميع الفئات</option>
+                    <option value="faces">الوجوه</option>
+                    <option value="texts">النصوص</option>
+                    <option value="objects">الكائنات</option>
+                </select>
+            </div>
+            <div class="results-table-container">
+                <table class="results-table" id="detailedResults">
+                    <thead>
+                        <tr>
+                            <th>النوع</th>
+                            <th>العدد</th>
+                            <th>التفاصيل</th>
+                            <th>الثقة</th>
+                            <th>الإطار</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${generateTableRows(results)}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `;
+    }
+
+    function generateTableRows(results) {
+        let rows = '';
+
+        // إضافة الوجوه
+        if (results.faces_data && Array.isArray(results.faces_data)) {
+            results.faces_data.forEach(face => {
+                rows += `
+                <tr data-category="faces">
+                    <td>👥 وجه</td>
+                    <td>1</td>
+                    <td>معرف ${face.face_id || 'غير معروف'}</td>
+                    <td>${Math.round(face.confidence * 100)}%</td>
+                    <td>${face.frame_number}</td>
+                </tr>
+                `;
+            });
+        }
+
+        // إضافة النصوص
+        if (results.extracted_texts && Array.isArray(results.extracted_texts)) {
+            results.extracted_texts.forEach(text => {
+                rows += `
+                <tr data-category="texts">
+                    <td>📝 نص</td>
+                    <td>1</td>
+                    <td>${text.text ? text.text.substring(0, 30) : ''}${text.text && text.text.length > 30 ? '...' : ''}</td>
+                    <td>${Math.round(text.confidence * 100)}%</td>
+                    <td>${text.frame_number}</td>
+                </tr>
+                `;
+            });
+        }
+
+        // إضافة الكائنات (إذا كانت متاحة)
+        if (results.objects_detected && Array.isArray(results.objects_detected[1])) {
+            results.objects_detected[1].forEach((obj, index) => {
+                rows += `
+                <tr data-category="objects">
+                    <td>📦 كائن</td>
+                    <td>1</td>
+                    <td>${obj}</td>
+                    <td>100%</td>
+                    <td>غير محدد</td>
+                </tr>
+                `;
+            });
+        }
+
+        return rows;
+    }
+
+    // تصفية الجدول
+    function filterTable() {
+        const input = document.getElementById('searchTable');
+        const filter = input.value.toUpperCase();
+        const category = document.getElementById('filterCategory').value;
+        const table = document.getElementById('detailedResults');
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName('td');
+            let show = false;
+            for (let j = 0; j < td.length; j++) {
+                if (td[j]) {
+                    const txtValue = td[j].textContent || td[j].innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        show = true;
+                        break;
+                    }
+                }
+            }
+
+            const rowCategory = tr[i].getAttribute('data-category');
+            const categoryMatch = category === 'all' || rowCategory === category;
+
+            tr[i].style.display = show && categoryMatch ? '' : 'none';
+        }
+    }
 </script>
 </body>
 </html>
@@ -1500,7 +2013,12 @@ async def analyze_video_endpoint(
         enable_activity_recognition: bool = Form(True),
         activity_prompt: Optional[str] = Form("Describe the main activities and environment in the video."),
         # إضافة prompt
-        activity_fps: Optional[float] = Form(1.0)  # إضافة fsp
+        activity_fps: Optional[float] = Form(1.0),
+        face_threshold: float = Form(0.3),  # قيمة افتراضية من config
+        text_threshold: float = Form(0.3),
+        object_threshold: float = Form(0.5),
+        detection_step: int = Form(1),
+
 ):
     try:
         if not file.content_type.startswith('video/'):
@@ -1532,7 +2050,11 @@ async def analyze_video_endpoint(
             "enable_activity_recognition": enable_activity_recognition,
             "original_filename": file.filename,
             "activity_prompt": activity_prompt,  # تمرير الـ prompt
-            "activity_fps": activity_fps  # تمرير الـ fsp
+            "activity_fps": activity_fps,  # تمرير الـ fsp
+            "face_threshold": face_threshold,
+            "text_threshold": text_threshold,
+            "object_threshold": object_threshold,
+            "detection_step": detection_step,
         }
 
         # إضافة العملية إلى القائمة النشطة
