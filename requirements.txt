@@ -1,4 +1,4 @@
-supervision
+supervision==0.22.0
 scrfd
 numpy==1.26.0
 opencv-python
@@ -7,10 +7,10 @@ opencv-contrib-python
 scikit-learn==1.5.2
 scipy==1.14.1
 # PyTorch مع CUDA 11.8 (أحدث سلسلة 2.4 لدعم NumPy 2.x)
-torch
-torchvision
-torchaudio
---extra-index-url https://download.pytorch.org/whl/cu118
+torch==2.6.0+cu124
+torchvision==2.6.0+cu124
+torchaudio==0.21.0+cu124
+--extra-index-url https://download.pytorch.org/whl/cu124
 # باقي المتطلبات (محدثة إلى أحدث الإصدارات المتوافقة مع NumPy 2.x)
 fastapi==0.115.0
 uvicorn==0.30.6
@@ -18,9 +18,12 @@ ultralytics==8.3.0
 easyocr==1.7.1
 openai-whisper==20240930
 transformers
-pillow==11.1.0
+pillow==10.1.0
 python-multipart==0.0.9
 ffmpeg-python==0.2.0
 pydantic==2.9.2
 aiofiles==24.1.0
 qwen_vl_utils 
+hf-xet==1.1.10
+huggingface-hub==0.35.3
+accelerate==1.10.1
