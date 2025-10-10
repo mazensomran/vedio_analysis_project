@@ -459,8 +459,14 @@ def process_video(input_path: str, process_id: str, options: Dict[str, Any]):
                 prompt=activity_prompt_text,
                 video_path=input_path,
                 fsp=activity_analysis_fps,
-                pixels_size=336
+                pixels_size=336,
+                max_new_tokens = options.get("max_new_tokens", 130),
+                temperature=options.get("temperature", 0.3),
+                top_p=options.get("top_p", 0.9),
+                top_k=options.get("top_k", 50),
+                do_sample=options.get("do_sample", True) if options.get("advanced_settings", False) else True
             )
+
             activity_analysis_ar = translator.translate(activity_analysis_en)
             activity_output = {
                 "activity_analysis_en": activity_analysis_en,
