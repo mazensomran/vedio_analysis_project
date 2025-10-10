@@ -16,6 +16,8 @@ from pathlib import Path
 import json
 import torch
 import aiofiles
+import cv2
+import numpy as np
 import gc
 
 from processing_pipeline import process_video, get_processing_status, stop_video_processing, cleanup_processing
@@ -712,6 +714,267 @@ HTML_TEMPLATE = """
             margin-top: 5px;
         }
 
+        /* تحسينات لعرض الوجوه */
+        .face-controls {
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: var(--border-radius);
+            text-align: center;
+        }
+
+        .face-item {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            text-align: center;
+            padding: 0.5rem;
+        }
+
+        .face-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .face-item .btn-small {
+            margin-top: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            width: 100%;
+        }
+
+        .face-info {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .more-faces {
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            margin-top: 1rem;
+            padding: 1rem;
+        }
+
+        /* نافذة عرض الوجه المحسنة */
+        .face-modal-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .face-preview-section {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .face-image-container {
+            flex: 2;
+            text-align: center;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border: 2px solid #e9ecef;
+        }
+
+        .face-info-panel {
+            flex: 1;
+            background: white;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--secondary-color);
+            min-width: 200px;
+        }
+
+        .face-controls-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+        }
+
+        .enhancement-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .enhancement-controls .btn {
+            padding: 0.8rem 0.5rem;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .enhancement-sliders {
+            background: white;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border: 1px solid #dee2e6;
+        }
+
+        .slider-control {
+            margin-bottom: 1rem;
+        }
+
+        .slider-control label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .slider-control .slider {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* تحسينات للعرض على الجوال */
+        @media (max-width: 768px) {
+            .face-preview-section {
+                flex-direction: column;
+            }
+
+            .face-info-panel {
+                min-width: auto;
+            }
+
+            .enhancement-controls {
+                grid-template-columns: 1fr;
+            }
+
+            .face-modal-container {
+                max-height: 90vh;
+            }
+        }
+
+        /* تحسينات التقليب */
+        .faces-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: var(--border-radius);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .faces-pagination {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .faces-pagination .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .page-info {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .faces-per-page {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .faces-per-page select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            background: white;
+        }
+
+        .btn-disabled {
+            background: #95a5a6 !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .no-faces {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* تحسينات لعرض الإجراءات */
+        .enhancement-stack {
+            background: white;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-top: 1rem;
+            border-left: 4px solid var(--info-color);
+        }
+
+        .enhancement-stack h5 {
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .enhancement-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .enhancement-item:last-child {
+            border-bottom: none;
+        }
+
+        /* تحسينات للعرض على الجوال */
+        @media (max-width: 768px) {
+            .faces-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .faces-pagination {
+                justify-content: center;
+            }
+
+            .faces-per-page {
+                justify-content: center;
+            }
+
+            .face-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+
+            .enhancement-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+                /* تنسيق قسم الضبط المتقدم */
+        .advanced-settings {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--warning-color);
+            margin-top: 1rem;
+        }
+
+        .advanced-settings h4 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
     </style>
 </head>
 <body>
@@ -797,11 +1060,42 @@ HTML_TEMPLATE = """
                         </div>
                         <div class="option-item" id="activityPromptContainer">
                             <label for="activityPrompt">سؤالك بخصوص الفيديو (Prompt):</label>
-                            <textarea id="activityPrompt" rows="3" class="form-control" placeholder="اكتب مطالبة مفصلة هنا...">Describe the main activities and environment in the video.</textarea>
+                            <textarea id="activityPrompt" rows="3" class="form-control" placeholder="اكتب مطالبة مفصلة هنا...">You are a video surveillance expert, and your task is to describe the key activities in the video and the environment in which the video events take place, while analyzing the surveillance records provided for each frame. Your goal is to describe unusual activities and notable events, such as numbers, times, and dates, the presence of weapons, masked individuals, or people with unusual appearances, and exceptional incidents such as shootings, thefts, break-ins, and rapid or sudden movements, based on the descriptions provided for each frame. Highlight any unusual activities or problems while maintaining continuity of context. Your summary style should focus on identifying specific incidents, such as potential police activity, accidents, or unusual gatherings, and highlight normal events to provide context about the environment. For example, someone steals from a store, places merchandise in their bag, assaults someone, breaks into a place, fires a gun, is kidnapped, or breaks or removes a window. Summarize what happened in the video. Answer concisely.</textarea>
                         </div>
                         <div class="option-item" id="activityFpsContainer">
                             <label for="activityFps">دقة التحليل (FPS):</label>
-                            <input type="number" id="activityFps" class="form-control" value="1" min="0.1" step="0.1">
+                            <input type="number" id="activityFps" class="form-control" value="1" min="1" step="1">
+                        </div>
+                        <!-- إضافة قسم الضبط المتقدم -->
+                        <div class="option-item" id="advancedSettingsContainer">
+                            <h4>⚙️ ضبط متقدم</h4>
+                            <div class="options-grid">
+                                <div class="option-item">
+                                    <label for="maxNewTokens">Max Tokens (1-500):</label>
+                                    <input type="range" id="maxNewTokens" min="1" max="500" step="1" value="130" class="slider">
+                                    <span id="maxNewTokensValue">130</span>
+                                </div>
+                                <div class="option-item">
+                                    <input type="checkbox" id="doSample">
+                                    <label for="doSample">Do Sample</label>
+                                </div>
+                                
+                                <div class="option-item">
+                                    <label for="temperature">Temperature (0-1):</label>
+                                    <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.3" class="slider">
+                                    <span id="temperatureValue">0.3</span>
+                                </div>
+                                <div class="option-item">
+                                    <label for="topP">Top P (0-1):</label>
+                                    <input type="range" id="topP" min="0" max="1" step="0.01" value="0.9" class="slider">
+                                    <span id="topPValue">0.9</span>
+                                </div>
+                                <div class="option-item">
+                                    <label for="topK">Top K (1-100):</label>
+                                    <input type="range" id="topK" min="1" max="100" step="1" value="50" class="slider">
+                                    <span id="topKValue">50</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -941,6 +1235,72 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         </div>
     </div>
 
+    <!-- Enhanced Face Modal -->
+    <div id="faceModal" class="modal">
+        <div class="modal-content" style="max-width: 95%; max-height: 95%;">
+            <span class="close-button" onclick="closeFaceModal()">&times;</span>
+            <h2>👤 معاينة وتحسين الوجه</h2>
+
+            <div class="face-modal-container">
+                <div class="face-preview-section">
+                    <div class="face-image-container">
+                        <img id="modalFaceImage" src="" alt="Face Preview" 
+                             style="max-width: 100%; max-height: 60vh; border: 2px solid #ddd; border-radius: 10px;">
+                    </div>
+                    <div class="face-info-panel">
+                        <h4>معلومات الوجه</h4>
+                        <p><strong>الإطار:</strong> <span id="modalFaceFrame">-</span></p>
+                        <p><strong>الثقة:</strong> <span id="modalFaceConfidence">-</span>%</p>
+                        <p><strong>الحالة:</strong> <span id="modalFaceStatus">الأصلية</span></p>
+                        <p><strong>الإجراءات:</strong> <span id="modalFaceActions">لا يوجد</span></p>
+                    </div>
+                </div>
+
+                <div class="face-controls-section">
+                    <h4>🛠️ أدوات التحسين</h4>
+                    <div class="enhancement-controls">
+                        <button class="btn btn-primary" onclick="applyEnhancement('super_resolution')">
+                            🔍 تحسين الدقة
+                        </button>
+                        <button class="btn btn-info" onclick="applyEnhancement('sharpen')">
+                            ⚡ زيادة الحدة
+                        </button>
+                        <button class="btn btn-warning" onclick="applyEnhancement('contrast')">
+                            🌈 زيادة التباين
+                        </button>
+                        <button class="btn btn-success" onclick="applyEnhancement('smooth')">
+                            💫 تنعيم الصورة
+                        </button>
+                        <button class="btn btn-secondary" onclick="undoEnhancement()">
+                            ↩️ تراجع
+                        </button>
+                        <button class="btn btn-danger" onclick="saveEnhancedFace()">
+                            💾 حفظ الصورة المحسنة
+                        </button>
+                    </div>
+
+                    <div class="enhancement-sliders hidden" id="enhancementSliders">
+                        <div class="slider-control">
+                            <label for="sharpenAmount">قوة الحدة:</label>
+                            <input type="range" id="sharpenAmount" min="1" max="5" step="0.5" value="2" class="slider">
+                            <span id="sharpenValue">2</span>
+                        </div>
+                        <div class="slider-control">
+                            <label for="contrastAmount">قوة التباين:</label>
+                            <input type="range" id="contrastAmount" min="1" max="3" step="0.1" value="1.5" class="slider">
+                            <span id="contrastValue">1.5</span>
+                        </div>
+                        <div class="slider-control">
+                            <label for="smoothAmount">قوة التنعيم:</label>
+                            <input type="range" id="smoothAmount" min="1" max="10" step="1" value="3" class="slider">
+                            <span id="smoothValue">3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script>
     // Global variables
@@ -948,13 +1308,19 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     let checkInterval = null;
     const baseUrl = window.location.origin;
 
+    // متغيرات التقليب العالمية
+    let currentFacesPage = 1;
+    let facesPerPage = 4;
+    let currentResults = null;
+    let totalFaces = 0;
+
     // Page initialization
     document.addEventListener('DOMContentLoaded', function() {
         setupDragAndDrop();
         checkServerStatus();
         updateApiExamples();
         checkActiveProcesses();
-        
+
 
         // تحكم في عتبة الوجوه
         document.getElementById('enableFaces').addEventListener('change', function() {
@@ -1025,46 +1391,51 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         toggleContainer('enableFaces', 'faceThresholdContainer', 'faceThreshold');
         toggleContainer('enableText', 'textThresholdContainer', 'textThreshold');
         toggleContainer('enableTracking', 'objectThresholdContainer', 'objectThreshold');
-        
-        // إضافة جديدة: تحكم في عناصر تحليل النشاط والبيئة (prompt و FPS)
-        function toggleActivityContainers(checkboxId, promptContainerId, fpsContainerId) {
+
+                // إضافة جديدة: تحكم في عناصر تحليل النشاط والبيئة (prompt و FPS والضبط المتقدم)
+        function toggleActivityContainers(checkboxId, promptContainerId, fpsContainerId, advancedContainerId) {
             const checkbox = document.getElementById(checkboxId);
             const promptContainer = document.getElementById(promptContainerId);
             const fpsContainer = document.getElementById(fpsContainerId);
+            const advancedContainer = document.getElementById(advancedContainerId);
             const promptTextarea = document.getElementById('activityPrompt');
             const fpsInput = document.getElementById('activityFps');
-            
+
             // التحقق الافتراضي عند التحميل (يظهر إذا كان checkbox محدد)
             if (checkbox.checked) {
                 promptContainer.style.display = 'block';
                 fpsContainer.style.display = 'block';
+                advancedContainer.style.display = 'block';
                 if (promptTextarea) promptTextarea.disabled = false;
                 if (fpsInput) fpsInput.disabled = false;
             } else {
                 promptContainer.style.display = 'none';
                 fpsContainer.style.display = 'none';
+                advancedContainer.style.display = 'none';
                 if (promptTextarea) promptTextarea.disabled = true;
                 if (fpsInput) fpsInput.disabled = true;
             }
-            
+
             // Event listener للتغييرات اللاحقة
             checkbox.addEventListener('change', function() {
                 if (this.checked) {
                     promptContainer.style.display = 'block';
                     fpsContainer.style.display = 'block';
+                    advancedContainer.style.display = 'block';
                     if (promptTextarea) promptTextarea.disabled = false;
                     if (fpsInput) fpsInput.disabled = false;
                 } else {
                     promptContainer.style.display = 'none';
                     fpsContainer.style.display = 'none';
+                    advancedContainer.style.display = 'none';
                     if (promptTextarea) promptTextarea.disabled = true;
                     if (fpsInput) fpsInput.disabled = true;
                 }
             });
         }
-        
-        toggleActivityContainers('enableActivity', 'activityPromptContainer', 'activityFpsContainer');
-        
+
+        toggleActivityContainers('enableActivity', 'activityPromptContainer', 'activityFpsContainer', 'advancedSettingsContainer');
+
         // تحديث قيم السلايدرز (لعرض القيمة الحالية)
 
         function updateSliderValue(sliderId, valueId) {
@@ -1237,10 +1608,17 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         formData.append('text_threshold', document.getElementById('textThreshold').value);
         formData.append('object_threshold', document.getElementById('objectThreshold').value);
         formData.append('detection_step', document.getElementById('detectionStep').value || 1);
-        // إضافة قيم الـ prompt والـ fsp
+        
         if (document.getElementById('enableActivity').checked) {
             formData.append('activity_prompt', document.getElementById('activityPrompt').value);
             formData.append('activity_fps', document.getElementById('activityFps').value);
+            
+            // إضافة معاملات الضبط المتقدم
+            formData.append('max_new_tokens', document.getElementById('maxNewTokens').value);
+            formData.append('temperature', document.getElementById('temperature').value);
+            formData.append('top_p', document.getElementById('topP').value);
+            formData.append('top_k', document.getElementById('topK').value);
+            formData.append('do_sample', document.getElementById('doSample').checked);
         } else {
             formData.append('activity_prompt', ''); // أو قيمة افتراضية أخرى
             formData.append('activity_fps', '1'); // أو قيمة افتراضية أخرى
@@ -1369,6 +1747,8 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     function showFinalResults(results) {
         document.getElementById('progressContainer').classList.add('hidden');
         const resultsContent = document.getElementById('resultsContent');
+        currentResults = results;
+
         resultsContent.innerHTML = generateResultsHTML(results.results);
         showStatus('تم عرض النتائج بنجاح!', 'success');
     }
@@ -1376,8 +1756,6 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     // Generate HTML for the results
     function generateResultsHTML(results) {
         let html = '';
-
-    // ⭐⭐ الإضافات الجديدة - ابدأ بها ⭐⭐
 
     // إضافة الإحصائيات السريعة
     html += createQuickStats(results);
@@ -1397,6 +1775,68 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     const facesFolderPath = `/outputs/${currentProcessId}/faces/`;
     const outputFolderPath = `/outputs/${currentProcessId}/`;
 
+    const maxFacesToShow = document.getElementById('maxFacesDisplay') ? 
+    parseInt(document.getElementById('maxFacesDisplay').value) || 4 : 4;
+    // عرض الوجوه مع التقليب
+    const totalPages = Math.ceil(totalFaces / facesPerPage);
+    const startIndex = (currentFacesPage - 1) * facesPerPage;
+    const endIndex = Math.min(startIndex + facesPerPage, totalFaces);
+    const currentPageFaces = results.faces_data ? results.faces_data.slice(startIndex, endIndex) : [];
+    totalFaces = results.faces_data ? results.faces_data.length : 0;
+
+    html += `
+        <div class="result-card">
+            <h3>👥 الوجوه المكتشفة</h3>
+            <div class="faces-header">
+                <div class="faces-info">
+                    <p>عرض ${totalFaces > 0 ? startIndex + 1 : 0}-${endIndex} من ${totalFaces} وجه</p>
+                </div>
+                <div class="faces-pagination">
+                    <button class="btn btn-small ${currentFacesPage === 1 ? 'btn-disabled' : 'btn-primary'}" 
+                            onclick="changeFacesPage(-1)" ${currentFacesPage === 1 ? 'disabled' : ''}>
+                        ⬅️ السابق
+                    </button>
+                    <span class="page-info">الصفحة ${currentFacesPage} من ${totalPages}</span>
+                    <button class="btn btn-small ${currentFacesPage === totalPages ? 'btn-disabled' : 'btn-primary'}" 
+                            onclick="changeFacesPage(1)" ${currentFacesPage === totalPages ? 'disabled' : ''}>
+                        التالي ➡️
+                    </button>
+                </div>
+                <div class="faces-per-page">
+                    <label for="facesPerPageSelect">عدد الوجوه في الصفحة:</label>
+                    <select id="facesPerPageSelect" onchange="changeFacesPerPage(this.value)">
+                        <option value="4" ${facesPerPage === 4 ? 'selected' : ''}>4</option>
+                        <option value="8" ${facesPerPage === 8 ? 'selected' : ''}>8</option>
+                        <option value="12" ${facesPerPage === 12 ? 'selected' : ''}>12</option>
+                        <option value="16" ${facesPerPage === 16 ? 'selected' : ''}>16</option>
+                    </select>
+                </div>
+            </div>
+
+            ${currentPageFaces.length > 0 ? `
+                <div class="face-grid">
+                    ${currentPageFaces.map(face => `
+                        <div class="face-item">
+                            <img src="/outputs/${currentProcessId}/faces/${face.image_path?.split('/').pop() || 'default.jpg'}"
+                                 alt="Face" class="face-image"
+                                 onclick="openFaceModal('${face.image_path}', ${face.confidence}, ${face.frame_number})"
+                                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiM5OTkiPvCfpqjwn5CSPC90ZXh0Pjwvc3ZnPg=='">
+                            <div class="face-info">
+                                <p>الإطار: ${face.frame_number}</p>
+                                <p>الثقة: ${Math.round(face.confidence * 100)}%</p>
+                            </div>
+                            <button class="btn btn-small btn-primary" 
+                                    onclick="quickEnhanceFace('${face.image_path}', ${face.frame_number}, this)">
+                                ✨ تحسين سريع
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '<p class="no-faces">لا توجد وجوه في هذه الصفحة</p>'}
+        </div>
+    `;
+
+
     html += `
         <div class="result-card">
             <h3>📊 نظرة عامة على التحليل</h3>
@@ -1408,23 +1848,6 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         </div>
 
         <div class="results-grid">
-            <div class="result-item">
-                <h3>👥 الوجوه المكتشفة</h3>
-                <p>الإجمالي: <strong>${results.faces_detected || 0}</strong></p>
-                ${results.faces_data && results.faces_data.length > 0 ? `
-                    <div class="face-grid">
-                        ${results.faces_data.slice(0, 8).map(face => `
-                            <div class="face-item">
-                                <img src="/outputs/${currentProcessId}/faces/${face.image_path?.split('/').pop() || 'default.jpg'}"
-                                     alt="Face" class="face-image"
-                                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iIGZpbGw9IiM5OTkiPvCfpqjwn5CSPC90ZXh0Pjwvc3ZnPg=='">
-                                <p>الإطار: ${face.frame_number}</p>
-                                <p>الثقة: ${Math.round(face.confidence * 100)}%</p>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : '<p>لم يتم اكتشاف أي وجوه</p>'}
-            </div>
 
             <div class="result-item">
                 <h3>📝 النصوص المستخرجة</h3>
@@ -1515,6 +1938,24 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         return html;
     }
 
+    // إضافة دالة تغيير الصفحة
+    function changeFacesPage(direction) {
+        const newPage = currentFacesPage + direction;
+        const totalPages = Math.ceil(totalFaces / facesPerPage);
+        
+        if (newPage >= 1 && newPage <= totalPages) {
+            currentFacesPage = newPage;
+            // إعادة تحميل النتائج
+            fetchResults(currentProcessId);
+        }
+    }
+
+    // إضافة دالة تغيير عدد الوجوه في الصفحة
+    function changeFacesPerPage(newValue) {
+        facesPerPage = parseInt(newValue);
+        currentFacesPage = 1; // العودة للصفحة الأولى
+        fetchResults(currentProcessId);
+    }
     // Generate HTML for the final results table
     function generateFinalResultsTableHTML(results) {
         let tableHtml = `
@@ -1744,6 +2185,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         document.getElementById('videoInfo').classList.add('hidden');
         setupDragAndDrop();
         showTab('upload');
+        currentFacesPage = 1;
         showStatus('جاهز لتحليل فيديو جديد', 'info');
     }
 
@@ -1966,6 +2408,338 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             tr[i].style.display = show && categoryMatch ? '' : 'none';
         }
     }
+
+    // متغيرات عالمية لإدارة حالة الوجه
+    let currentFaceData = {
+        originalPath: '',
+        currentState: null,
+        frameNumber: 0,
+        confidence: 0,
+        enhancementStack: [], // سجل التحسينات المطبقة
+        currentImage: '',
+        enhancementHistory: [] // تاريخ الصور للتراجع
+    };
+
+    // فتح نافذة الوجه
+    function openFaceModal(imagePath, confidence, frameNumber) {
+        const originalImageUrl = `/outputs/${currentProcessId}/faces/${imagePath.split('/').pop()}`;
+
+        currentFaceData = {
+            originalPath: imagePath,
+            currentState: 'original',
+            frameNumber: frameNumber,
+            confidence: confidence,
+            enhancementStack: [],
+            currentImage: originalImageUrl,
+            enhancementHistory: [{
+                image: originalImageUrl,
+                state: 'original',
+                action: 'الصورة الأصلية'
+            }]
+        };
+
+        document.getElementById('modalFaceImage').src = currentFaceData.currentImage;
+        document.getElementById('modalFaceFrame').textContent = frameNumber;
+        document.getElementById('modalFaceConfidence').textContent = Math.round(confidence * 100);
+        document.getElementById('modalFaceStatus').textContent = 'الأصلية';
+        updateActionsDisplay();
+
+        document.getElementById('faceModal').style.display = 'block';
+    }
+    // تحديث عرض الإجراءات
+    function updateActionsDisplay() {
+        const actionsElement = document.getElementById('modalFaceActions');
+        if (currentFaceData.enhancementStack.length === 0) {
+            actionsElement.textContent = 'لا يوجد';
+        } else {
+            actionsElement.textContent = currentFaceData.enhancementStack
+                .map(enh => getEnhancementName(enh.type))
+                .join(' → ');
+        }
+    }
+
+    // تطبيق التحسينات بشكل تسلسلي
+    async function applyEnhancement(type) {
+        const imageElement = document.getElementById('modalFaceImage');
+        const statusElement = document.getElementById('modalFaceStatus');
+
+        try {
+            statusElement.textContent = `جاري تطبيق ${getEnhancementName(type)}...`;
+
+            // إضافة التحسين إلى السجل
+            currentFaceData.enhancementStack.push({
+                type: type,
+                parameters: getEnhancementParameters(type),
+                timestamp: new Date().toISOString()
+            });
+
+            const response = await fetch('/enhance-face-sequence', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    process_id: currentProcessId,
+                    original_path: currentFaceData.originalPath,
+                    enhancement_stack: currentFaceData.enhancementStack
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+
+                // تحديث الحالة الحالية
+                currentFaceData.currentImage = `/outputs/${currentProcessId}/faces/${result.enhanced_filename}?t=${Date.now()}`;
+                currentFaceData.currentState = 'enhanced';
+
+                // إضافة إلى تاريخ التراجع
+                currentFaceData.enhancementHistory.push({
+                    image: currentFaceData.currentImage,
+                    state: 'enhanced',
+                    action: getEnhancementName(type)
+                });
+
+                imageElement.src = currentFaceData.currentImage;
+                statusElement.textContent = `محسنة - ${getEnhancementName(type)}`;
+                updateActionsDisplay();
+
+                toggleEnhancementSliders(type);
+            } else {
+                // إزالة التحسين من السجل إذا فشل
+                currentFaceData.enhancementStack.pop();
+                throw new Error('فشل في تطبيق التحسين');
+            }
+        } catch (error) {
+            statusElement.textContent = 'خطأ في التحسين';
+            console.error('Error enhancing face:', error);
+        }
+    }
+
+    // التراجع عن آخر عملية
+    function undoEnhancement() {
+        if (currentFaceData.enhancementHistory.length > 1) {
+            // إزالة آخر تحسين من السجل
+            currentFaceData.enhancementStack.pop();
+            currentFaceData.enhancementHistory.pop();
+
+            // العودة إلى الحالة السابقة
+            const previousState = currentFaceData.enhancementHistory[currentFaceData.enhancementHistory.length - 1];
+            currentFaceData.currentImage = previousState.image;
+            currentFaceData.currentState = previousState.state;
+
+            document.getElementById('modalFaceImage').src = currentFaceData.currentImage;
+            document.getElementById('modalFaceStatus').textContent = 
+                previousState.state === 'original' ? 'الأصلية' : 'محسنة';
+            updateActionsDisplay();
+
+            // إذا كان هناك تحسينات متبقية، نعيد تطبيقها
+            if (currentFaceData.enhancementStack.length > 0) {
+                reapplyEnhancements();
+            }
+        }
+    }
+
+    // إعادة تطبيق التحسينات (للعرض الفوري)
+    async function reapplyEnhancements() {
+        if (currentFaceData.enhancementStack.length === 0) return;
+
+        try {
+            const response = await fetch('/enhance-face-sequence', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    process_id: currentProcessId,
+                    original_path: currentFaceData.originalPath,
+                    enhancement_stack: currentFaceData.enhancementStack
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                currentFaceData.currentImage = `/outputs/${currentProcessId}/faces/${result.enhanced_filename}?t=${Date.now()}`;
+                document.getElementById('modalFaceImage').src = currentFaceData.currentImage;
+            }
+        } catch (error) {
+            console.error('Error reapplying enhancements:', error);
+        }
+    }
+    // إغلاق نافذة الوجه
+    function closeFaceModal() {
+        document.getElementById('faceModal').style.display = 'none';
+        resetFaceImage();
+    }
+
+    // الحصول على اسم التحسين
+    function getEnhancementName(type) {
+        const names = {
+            'super_resolution': 'تحسين الدقة',
+            'sharpen': 'زيادة الحدة',
+            'contrast': 'زيادة التباين',
+            'smooth': 'تنعيم الصورة'
+        };
+        return names[type] || type;
+    }
+
+    // الحصول على معاملات التحسين
+    function getEnhancementParameters(type) {
+        const params = {};
+        switch(type) {
+            case 'sharpen':
+                params.strength = parseFloat(document.getElementById('sharpenAmount').value);
+                break;
+            case 'contrast':
+                params.strength = parseFloat(document.getElementById('contrastAmount').value);
+                break;
+            case 'smooth':
+                params.strength = parseFloat(document.getElementById('smoothAmount').value);
+                break;
+        }
+        return params;
+    }
+
+    // إظهار/إخفاء عناصر التحكم المنزلقة
+    function toggleEnhancementSliders(type) {
+        const sliders = document.getElementById('enhancementSliders');
+        if (['sharpen', 'contrast', 'smooth'].includes(type)) {
+            sliders.classList.remove('hidden');
+        } else {
+            sliders.classList.add('hidden');
+        }
+    }
+
+
+    // حفظ الصورة المحسنة
+    async function saveEnhancedFace() {
+        if (currentFaceData.enhancementStack.length === 0) {
+            alert('⚠️ يرجى تطبيق تحسين على الصورة أولاً');
+            return;
+        }
+
+        try {
+            const response = await fetch('/save-enhanced-face', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    process_id: currentProcessId,
+                    original_path: currentFaceData.originalPath,
+                    enhanced_path: currentFaceData.currentImage.split('/').pop().split('?')[0],
+                    enhancement_stack: currentFaceData.enhancementStack
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert('✅ تم حفظ الصورة المحسنة بنجاح');
+                document.getElementById('modalFaceStatus').textContent += ' - محفوظة';
+            } else {
+                throw new Error('فشل في حفظ الصورة');
+            }
+        } catch (error) {
+            alert('❌ خطأ في حفظ الصورة');
+            console.error('Error saving enhanced face:', error);
+        }
+    }
+
+    // تحسين سريع للوجه في الشبكة
+    async function quickEnhanceFace(imagePath, frameNumber, buttonElement) {
+        try {
+            buttonElement.disabled = true;
+            buttonElement.textContent = 'جاري التحسين...';
+
+            const response = await fetch('/enhance-face', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    process_id: currentProcessId,
+                    image_path: imagePath,
+                    enhancement_type: 'super_resolution'
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                // تحديث الصورة في الشبكة
+                const faceElement = buttonElement.closest('.face-item');
+                const imgElement = faceElement.querySelector('.face-image');
+                imgElement.src = `/outputs/${currentProcessId}/faces/${result.enhanced_filename}?t=${Date.now()}`;
+                buttonElement.textContent = '✓ تم التحسين';
+                buttonElement.classList.remove('btn-primary');
+                buttonElement.classList.add('btn-success');
+            } else {
+                throw new Error('فشل في تحسين الصورة');
+            }
+        } catch (error) {
+            buttonElement.textContent = '❌ خطأ';
+            console.error('Error in quick enhance:', error);
+        }
+    }
+
+    // إعادة تعيين الصورة
+    function resetFaceImage() {
+        if (currentFaceData.originalPath) {
+            currentFaceData.enhancementStack = [];
+            currentFaceData.enhancementHistory = [{
+                image: `/outputs/${currentProcessId}/faces/${currentFaceData.originalPath.split('/').pop()}`,
+                state: 'original',
+                action: 'الصورة الأصلية'
+            }];
+            currentFaceData.currentImage = currentFaceData.enhancementHistory[0].image;
+
+            document.getElementById('modalFaceImage').src = currentFaceData.currentImage;
+            document.getElementById('modalFaceStatus').textContent = 'الأصلية';
+            updateActionsDisplay();
+        }
+    }
+
+    // تحديث قيم السلايدرز
+    function setupEnhancementSliders() {
+        const sliders = [
+            { id: 'sharpenAmount', valueId: 'sharpenValue' },
+            { id: 'contrastAmount', valueId: 'contrastValue' },
+            { id: 'smoothAmount', valueId: 'smoothValue' }
+        ];
+
+        sliders.forEach(slider => {
+            const element = document.getElementById(slider.id);
+            const valueElement = document.getElementById(slider.valueId);
+            if (element && valueElement) {
+                element.addEventListener('input', function() {
+                    valueElement.textContent = this.value;
+                });
+                valueElement.textContent = element.value;
+            }
+        });
+    }
+
+    // استدعاء الإعداد عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', function() {
+        setupEnhancementSliders();
+        setupAdvancedSettingsSliders();
+    });
+        // التحكم في إظهار قسم الضبط المتقدم
+    function toggleAdvancedSettings(show) {
+        const advancedContainer = document.getElementById('advancedSettingsContainer');
+        if (show) {
+            advancedContainer.classList.remove('hidden');
+        } else {
+            advancedContainer.classList.add('hidden');
+        }
+    }
+
+    // تحديث قيم السلايدرز للضبط المتقدم
+    function setupAdvancedSettingsSliders() {
+        updateSliderValue('temperature', 'temperatureValue');
+        updateSliderValue('topP', 'topPValue');
+        updateSliderValue('topK', 'topKValue');
+        updateSliderValue('maxNewTokens', 'maxNewTokensValue');
+    }
+    
 </script>
 </body>
 </html>
@@ -2011,13 +2785,19 @@ async def analyze_video_endpoint(
         enable_text_detection: bool = Form(True),
         enable_tracking: bool = Form(True),
         enable_activity_recognition: bool = Form(True),
-        activity_prompt: Optional[str] = Form("Describe the main activities and environment in the video."),
+        activity_prompt: Optional[str] = Form("You are a video surveillance expert, and your task is to describe the key activities in the video and the environment in which the video events take place, while analyzing the surveillance records provided for each frame. Your goal is to describe unusual activities and notable events, such as numbers, times, and dates, the presence of weapons, masked individuals, or people with unusual appearances, and exceptional incidents such as shootings, thefts, break-ins, and rapid or sudden movements, based on the descriptions provided for each frame. Highlight any unusual activities or problems while maintaining continuity of context. Your summary style should focus on identifying specific incidents, such as potential police activity, accidents, or unusual gatherings, and highlight normal events to provide context about the environment. For example, someone steals from a store, places merchandise in their bag, assaults someone, breaks into a place, fires a gun, is kidnapped, or breaks or removes a window. Summarize what happened in the video. Answer concisely.."),
         # إضافة prompt
         activity_fps: Optional[float] = Form(1.0),
         face_threshold: float = Form(0.3),  # قيمة افتراضية من config
         text_threshold: float = Form(0.3),
         object_threshold: float = Form(0.5),
         detection_step: int = Form(1),
+        advanced_settings: bool = Form(False),
+        max_new_tokens: int = Form(130),
+        temperature: float = Form(0.3),
+        top_p: float = Form(0.9),
+        top_k: int = Form(50),
+        do_sample: bool = Form(True),
 
 ):
     try:
@@ -2055,6 +2835,12 @@ async def analyze_video_endpoint(
             "text_threshold": text_threshold,
             "object_threshold": object_threshold,
             "detection_step": detection_step,
+            "advanced_settings": advanced_settings,
+            "temperature": temperature if advanced_settings else None,
+            "top_p": top_p if advanced_settings else None,
+            "top_k": top_k if advanced_settings else None,
+            "do_sample": do_sample if advanced_settings else None,
+            "max_new_tokens": max_new_tokens if advanced_settings else None,
         }
 
         # إضافة العملية إلى القائمة النشطة
@@ -2090,6 +2876,52 @@ async def analyze_video_endpoint(
         raise HTTPException(status_code=500, detail=f"خطأ في معالجة الفيديو: {str(e)}")
 
 
+@app.post("/enhance-face")
+async def enhance_face_endpoint(data: dict):
+    try:
+        process_id = data.get("process_id")
+        image_path = data.get("image_path")
+        enhancement_type = data.get("enhancement_type", "super_resolution")
+        parameters = data.get("parameters", {})
+
+        if not process_id or not image_path:
+            raise HTTPException(status_code=400, detail="معرف العملية ومسار الصورة مطلوبان")
+
+        # مسار الصورة الأصلية
+        original_image_path = OUTPUTS_DIR / process_id / "faces" / Path(image_path).name
+
+        if not original_image_path.exists():
+            raise HTTPException(status_code=404, detail="الصورة غير موجودة")
+
+        # تحسين الصورة
+        enhanced_filename = await enhance_face_image(
+            str(original_image_path),
+            process_id,
+            enhancement_type,
+            parameters
+        )
+
+        return JSONResponse({
+            "status": "success",
+            "enhanced_filename": enhanced_filename,
+            "enhancement_type": enhancement_type,
+            "message": f"تم تطبيق {get_enhancement_name(enhancement_type)} بنجاح"
+        })
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"خطأ في تحسين الصورة: {str(e)}")
+
+
+def get_enhancement_name(enhancement_type: str) -> str:
+    names = {
+        "super_resolution": "تحسين الدقة",
+        "sharpen": "زيادة الحدة",
+        "contrast": "زيادة التباين",
+        "smooth": "تنعيم الصورة"
+    }
+    return names.get(enhancement_type, enhancement_type)
+
+
 @app.post("/stop-analysis/{process_id}")
 async def stop_analysis_endpoint(process_id: str):
     """إيقاف معالجة الفيديو"""
@@ -2118,6 +2950,133 @@ async def stop_analysis_endpoint(process_id: str):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"خطأ في إيقاف التحليل: {str(e)}")
+
+
+@app.post("/enhance-face-sequence")
+async def enhance_face_sequence_endpoint(data: dict):
+    """تطبيق سلسلة من التحسينات على الصورة بشكل تسلسلي"""
+    try:
+        process_id = data.get("process_id")
+        original_path = data.get("original_path")
+        enhancement_stack = data.get("enhancement_stack", [])
+
+        if not process_id or not original_path:
+            raise HTTPException(status_code=400, detail="معرف العملية ومسار الصورة مطلوبان")
+
+        # مسار الصورة الأصلية
+        original_image_path = OUTPUTS_DIR / process_id / "faces" / Path(original_path).name
+
+        if not original_image_path.exists():
+            raise HTTPException(status_code=404, detail="الصورة الأصلية غير موجودة")
+
+        # تطبيق التحسينات بشكل تسلسلي
+        enhanced_filename = await apply_enhancement_sequence(
+            str(original_image_path),
+            process_id,
+            enhancement_stack
+        )
+
+        return JSONResponse({
+            "status": "success",
+            "enhanced_filename": enhanced_filename,
+            "message": f"تم تطبيق {len(enhancement_stack)} تحسين بشكل تسلسلي"
+        })
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"خطأ في التحسين التسلسلي: {str(e)}")
+
+
+async def apply_enhancement_sequence(image_path: str, process_id: str, enhancement_stack: list) -> str:
+    """تطبيق سلسلة من التحسينات على الصورة"""
+    try:
+        import cv2
+        import numpy as np
+
+        # قراءة الصورة الأصلية
+        current_image = cv2.imread(image_path)
+        if current_image is None:
+            raise Exception("تعذر قراءة الصورة الأصلية")
+
+        # تطبيق كل تحسين في السلسلة
+        for i, enhancement in enumerate(enhancement_stack):
+            enhancement_type = enhancement.get("type")
+            parameters = enhancement.get("parameters", {})
+
+            # تطبيق التحسين الحالي
+            if enhancement_type == "super_resolution":
+                current_image = apply_super_resolution(current_image)
+            elif enhancement_type == "sharpen":
+                strength = parameters.get("strength", 2.0)
+                current_image = apply_sharpening(current_image, strength)
+            elif enhancement_type == "contrast":
+                strength = parameters.get("strength", 1.5)
+                current_image = apply_contrast_enhancement(current_image, strength)
+            elif enhancement_type == "smooth":
+                strength = parameters.get("strength", 3)
+                current_image = apply_smoothing(current_image, strength)
+
+        # حفظ الصورة النهائية
+        original_path = Path(image_path)
+        stack_description = "_".join([enh["type"] for enh in enhancement_stack])
+        enhanced_filename = f"enhanced_sequence_{stack_description}_{original_path.name}"
+        enhanced_path = OUTPUTS_DIR / process_id / "faces" / enhanced_filename
+
+        cv2.imwrite(str(enhanced_path), current_image, [cv2.IMWRITE_JPEG_QUALITY, 95])
+
+        return enhanced_filename
+
+    except Exception as e:
+        raise Exception(f"فشل في تطبيق السلسلة التحسينية: {str(e)}")
+
+
+@app.post("/save-enhanced-face")
+async def save_enhanced_face_endpoint(data: dict):
+    """حفظ الصورة المحسنة بشكل منفصل"""
+    try:
+        process_id = data.get("process_id")
+        original_path = data.get("original_path")
+        enhanced_path = data.get("enhanced_path")
+        enhancement_stack = data.get("enhancement_stack", [])
+
+        if not all([process_id, original_path, enhanced_path]):
+            raise HTTPException(status_code=400, detail="جميع الحقول مطلوبة")
+
+        # إنشاء مجلد الوجوه المحسنة
+        enhanced_faces_dir = OUTPUTS_DIR / process_id / "enhanced_faces"
+        enhanced_faces_dir.mkdir(exist_ok=True, parents=True)
+
+        # مسار الصورة المحسنة الحالية
+        current_enhanced_path = OUTPUTS_DIR / process_id / "faces" / enhanced_path
+
+        if not current_enhanced_path.exists():
+            raise HTTPException(status_code=404, detail="الصورة المحسنة غير موجودة")
+
+        # إنشاء اسم وصفي للصورة المحفوظة
+        original_name = Path(original_path).stem
+        extension = Path(original_path).suffix
+
+        # بناء وصف التحسينات من السلسلة
+        if enhancement_stack:
+            enhancements_desc = "_".join([enh["type"] for enh in enhancement_stack])
+            new_filename = f"{original_name}_enhanced_{enhancements_desc}{extension}"
+        else:
+            new_filename = f"{original_name}_enhanced{extension}"
+
+        saved_path = enhanced_faces_dir / new_filename
+
+        # نسخ الصورة المحسنة
+        import shutil
+        shutil.copy2(current_enhanced_path, saved_path)
+
+        return JSONResponse({
+            "status": "success",
+            "saved_path": str(saved_path.relative_to(OUTPUTS_DIR / process_id)),
+            "filename": new_filename,
+            "message": "تم حفظ الصورة المحسنة بنجاح"
+        })
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"خطأ في حفظ الصورة المحسنة: {str(e)}")
 
 
 @app.get("/results/{process_id}")
@@ -2239,6 +3198,88 @@ async def api_docs_redirect():
 async def api_redoc_redirect():
     """إعادة التوجيه إلى Redoc"""
     return RedirectResponse(url="/redoc")
+
+
+async def enhance_face_image(image_path: str, process_id: str, enhancement_type: str, parameters: dict = None) -> str:
+    """تحسين جودة صورة الوجه حسب النوع المطلوب"""
+    try:
+        import cv2
+        import numpy as np
+        from PIL import Image, ImageEnhance, ImageFilter
+
+        if parameters is None:
+            parameters = {}
+
+        # قراءة الصورة
+        image = cv2.imread(image_path)
+        if image is None:
+            raise Exception("تعذر قراءة الصورة")
+
+        # تطبيق التحسين المطلوب
+        if enhancement_type == "super_resolution":
+            enhanced = apply_super_resolution(image)
+        elif enhancement_type == "sharpen":
+            enhanced = apply_sharpening(image, parameters.get("strength", 2.0))
+        elif enhancement_type == "contrast":
+            enhanced = apply_contrast_enhancement(image, parameters.get("strength", 1.5))
+        elif enhancement_type == "smooth":
+            enhanced = apply_smoothing(image, parameters.get("strength", 3))
+        else:
+            enhanced = image  # إذا كان النوع غير معروف، نعود للصورة الأصلية
+
+        # حفظ الصورة المحسنة
+        original_path = Path(image_path)
+        enhanced_filename = f"enhanced_{enhancement_type}_{original_path.name}"
+        enhanced_path = OUTPUTS_DIR / process_id / "faces" / enhanced_filename
+
+        cv2.imwrite(str(enhanced_path), enhanced, [cv2.IMWRITE_JPEG_QUALITY, 95])
+
+        return enhanced_filename
+
+    except Exception as e:
+        raise Exception(f"فشل في تحسين الصورة: {str(e)}")
+
+
+def apply_super_resolution(image):
+    """تحسين دقة الصورة"""
+    height, width = image.shape[:2]
+
+    # زيادة الدقة باستخدام resize عالي الجودة
+    enhanced = cv2.resize(image, (width * 2, height * 2), interpolation=cv2.INTER_CUBIC)
+
+    # تقليل الضوضاء
+    enhanced = cv2.fastNlMeansDenoisingColored(enhanced, None, 10, 10, 7, 21)
+
+    return enhanced
+
+
+def apply_sharpening(image, strength=2.0):
+    """زيادة حدة الصورة"""
+    # إنشاء kernel للحدة
+    kernel = np.array([[-1, -1, -1],
+                       [-1, 8 + strength, -1],
+                       [-1, -1, -1]]) / strength
+    sharpened = cv2.filter2D(image, -1, kernel)
+    return sharpened
+
+
+def apply_contrast_enhancement(image, strength=1.5):
+    """زيادة تباين الصورة"""
+    # تحسين التباين باستخدام CLAHE
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    lab_planes = list(cv2.split(lab))
+    clahe = cv2.createCLAHE(clipLimit=strength, tileGridSize=(8, 8))
+    lab_planes[0] = clahe.apply(lab_planes[0])
+    lab = cv2.merge(lab_planes)
+    enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    return enhanced
+
+
+def apply_smoothing(image, strength=3):
+    """تنعيم الصورة"""
+    # تطبيق تنعيم Gaussian
+    smoothed = cv2.GaussianBlur(image, (0, 0), strength)
+    return smoothed
 
 
 if __name__ == "__main__":
