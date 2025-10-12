@@ -1059,8 +1059,24 @@ HTML_TEMPLATE = """
                             <label for="enableActivity">🎯 تحليل النشاط والبيئة</label>
                         </div>
                         <div class="option-item" id="activityPromptContainer">
-                            <label for="activityPrompt">سؤالك بخصوص الفيديو (Prompt):</label>
-                            <textarea id="activityPrompt" rows="3" class="form-control" placeholder="اكتب مطالبة مفصلة هنا...">You are a video surveillance expert, and your task is to describe the key activities in the video and the environment in which the video events take place, while analyzing the surveillance records provided for each frame. Your goal is to describe unusual activities and notable events, such as numbers, times, and dates, the presence of weapons, masked individuals, or people with unusual appearances, and exceptional incidents such as shootings, thefts, break-ins, and rapid or sudden movements, based on the descriptions provided for each frame. Highlight any unusual activities or problems while maintaining continuity of context. Your summary style should focus on identifying specific incidents, such as potential police activity, accidents, or unusual gatherings, and highlight normal events to provide context about the environment. For example, someone steals from a store, places merchandise in their bag, assaults someone, breaks into a place, fires a gun, is kidnapped, or breaks or removes a window. Summarize what happened in the video. Answer concisely.</textarea>
+                            <label for="activityPromptPreset">نوع التحليل:</label>
+                            <select id="activityPromptPreset" class="form-control" onchange="loadPromptPreset(this.value)">
+                                <option value="forensic">🔍 التحليل الشامل للأدلة الجنائية</option>
+                                <option value="threats">⚠️ كشف التهديدات والأسلحة</option>
+                                <option value="theft">💰 تحليل السرقة والاعتداء على الممتلكات</option>
+                                <option value="behavior">🚶 تحليل الحركات والسلوكيات المشبوهة</option>
+                                <option value="temporal">⏰ التحليل الزمني والتسلسلي للأحداث</option>
+                                <option value="custom">✏️ تخصيص يدوي (اكتب Prompt خاص)</option>
+                            </select>
+                            
+                            <div id="customPromptContainer" class="hidden" style="margin-top: 10px;">
+                                <label for="activityPrompt">أدخل الـ Prompt المخصص:</label>
+                                <textarea id="activityPrompt" rows="3" class="form-control" placeholder="اكتب مطالبة مفصلة هنا..."></textarea>
+                            </div>
+                            
+                            <div id="presetDescription" class="status-message status-info" style="margin-top: 10px; font-size: 0.9em;">
+                                <strong>التحليل الشامل للأدلة الجنائية:</strong> تحليل كامل للفيديو يشمل البيئة، الأشخاص، الأنشطة المشبوهة، وجمع الأدلة
+                            </div>
                         </div>
                         <div class="option-item" id="activityFpsContainer">
                             <label for="activityFps">دقة التحليل (FPS):</label>
@@ -1408,6 +1424,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 advancedContainer.style.display = 'block';
                 if (promptTextarea) promptTextarea.disabled = false;
                 if (fpsInput) fpsInput.disabled = false;
+                loadPromptPreset('forensic');
             } else {
                 promptContainer.style.display = 'none';
                 fpsContainer.style.display = 'none';
@@ -1530,6 +1547,191 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 }
             }
         }
+    }
+    
+    // تعريف الـ Prompts المحددة مسبقاً
+    const promptPresets = {
+        'forensic': `You are a forensic video analysis expert. Analyze this surveillance footage systematically:
+    
+    **ENVIRONMENT & CONTEXT:**
+    - Describe the location, time of day, lighting conditions, and weather
+    - Identify the type of venue (store, street, building, etc.)
+    - Note any visible landmarks, signs, or distinctive features
+    
+    **PERSON ANALYSIS:**
+    - Count and describe all individuals (approximate age, gender, clothing, distinctive features)
+    - Identify masked individuals, people wearing unusual clothing, or attempting to conceal identity
+    - Track movements and interactions between people
+    
+    **SUSPICIOUS ACTIVITIES - PRIORITY DETECTION:**
+    🔴 **CRITICAL EVENTS:** Weapons presence, assaults, fights, shootings, kidnappings, robberies
+    🟡 **SUSPICIOUS BEHAVIORS:** Unauthorized entry, property damage, theft, hiding objects, rapid movements
+    🟢 **UNUSUAL PATTERNS:** Loitering, frequent coming/going, abandoned objects, vehicle circling
+    
+    **TEMPORAL ANALYSIS:**
+    - Note timestamps of significant events
+    - Document sequence of critical incidents
+    - Identify patterns in timing of activities
+    
+    **EVIDENCE DOCUMENTATION:**
+    - License plates, vehicle descriptions
+    - Visible faces (quality assessment for identification)
+    - Objects carried or exchanged
+    - Digital evidence (phones, cameras in use)
+    
+    Provide a detailed description and confidence levels for each observation. Highlight the three most serious incidents that require immediate investigation.`,
+    
+        'threats': `As a security threat detection specialist, focus specifically on:
+    
+    **WEAPONS & DANGEROUS OBJECTS:**
+    - Firearms (handguns, rifles, shotguns)
+    - Knives, blades, sharp objects
+    - Explosives, suspicious packages
+    - Tools used for breaking/entering (crowbars, hammers)
+    
+    **THREAT INDICATORS:**
+    - Aggressive body language, fighting stances
+    - Concealed hands, bulges in clothing suggesting hidden objects
+    - Protective gear (gloves, masks, helmets)
+    - Coordinated group movements suggesting planned action
+    
+    **IMMINENT DANGER SIGNALS:**
+    - Hostage situations, physical restraints
+    - Panic reactions from bystanders
+    - Rapid evacuation or hiding behaviors
+    - Sounds of gunshots, screams, breaking glass
+    
+    **RESPONSE ASSESSMENT:**
+    - Police/security presence and response time
+    - Civilian reactions and escape patterns
+    - Medical emergency responses
+    
+    Provide a detailed description and confidence levels for each observation. Prioritize immediate threats and provide practical recommendations for law enforcement responses.`,
+    
+        'theft': `Focus on property crimes and theft detection:
+    
+    **THEFT BEHAVIORS:**
+    - Shoplifting: concealing merchandise, avoiding cameras
+    - Bag/package tampering
+    - Unauthorized access to restricted areas
+    - Breaking into vehicles or buildings
+    
+    **PROPERTY DAMAGE:**
+    - Vandalism: graffiti, broken windows, damaged property
+    - Forced entry: broken locks, pried doors
+    - Arson attempts, fire-related activities
+    
+    **ACCOMPLICE PATTERNS:**
+    - Lookouts/distractions working with perpetrators
+    - Getaway vehicles and drivers
+    - Signal systems between individuals
+    
+    **EVIDENCE COLLECTION:**
+    - Clear facial captures of perpetrators
+    - Vehicle make/model/color/license plates
+    - Stolen items description and handling
+    - Escape routes and directions
+    
+    Provide a detailed description, specifying confidence levels for each observation. Document the complete timeline of the crime, from preparation to escape.`,
+    
+        'behavior': `Analyze behavioral patterns and suspicious movements:
+    
+    **SUSPICIOUS BEHAVIORAL CUES:**
+    - Nervousness: frequent looking around, checking watches
+    - Attempted disguise: hats, sunglasses, masks in inappropriate contexts
+    - Unnatural loitering without clear purpose
+    - Testing security measures (checking doors, cameras)
+    
+    **MOVEMENT ANALYSIS:**
+    - Erratic or evasive walking patterns
+    - Rapid direction changes to avoid detection
+    - Crouching, hiding, or moving in shadows
+    - Unusual gathering/dispersal patterns
+    
+    **PRE-INCIDENT INDICATORS:**
+    - Surveillance of locations (casing)
+    - Equipment preparation (putting on gloves, masks)
+    - Communication signals (phone calls, hand signals)
+    - Positioning for ambush or attack
+    
+    **CONTEXTUAL ABNORMALITIES:**
+    - Inappropriate clothing for weather/occasion
+    - Carrying unusual objects for the location
+    - Mismatched group behavior (some watching while others act)
+    
+    Provide a detailed description with confidence levels for each observation, and suggest follow-up monitoring actions.`,
+    
+        'temporal': `Conduct detailed temporal analysis of events:
+    
+    **CHRONOLOGICAL EVENT MAPPING:**
+    - Create minute-by-minute timeline of significant activities
+    - Document exact sequence of critical incidents
+    - Note duration of suspicious activities
+    
+    **PATTERN RECOGNITION:**
+    - Repetitive behaviors or regular visits
+    - Timing correlations between different individuals
+    - Peak activity periods and lulls
+    
+    **CAUSE-AND-EFFECT ANALYSIS:**
+    - Trigger events that initiate suspicious activities
+    - Chain reactions between different parties
+    - Response patterns to external stimuli
+    
+    **TIMING ANOMALIES:**
+    - Activities occurring at unusual hours
+    - Synchronized actions between distant individuals
+    - Precise timing suggesting planning/rehearsal
+    
+    **EVIDENCE TIMELINE:**
+    - First/last appearance of key individuals
+    - Time windows for critical evidentiary moments
+    - Duration of observable criminal acts
+    
+    Provide a detailed description and confidence levels for each observation, presenting the results in a timeline format consistent with the sequence of events and video frames.`
+    };
+    
+    // أوصاف الـ Prompts
+    const promptDescriptions = {
+        'forensic': 'التحليل الشامل للأدلة الجنائية: تحليل كامل للفيديو يشمل البيئة، الأشخاص، الأنشطة المشبوهة، وجمع الأدلة',
+        'threats': 'كشف التهديدات والأسلحة: يركز على اكتشاف الأسلحة والأنشطة الخطرة والاستجابة للطوارئ',
+        'theft': 'تحليل السرقة والاعتداء على الممتلكات: مخصص لجرائم السرقة والتخريب والاعتداء على الممتلكات',
+        'behavior': 'تحليل الحركات والسلوكيات المشبوهة: يرصد السلوكيات غير الطبيعية والحركات المشبوهة',
+        'temporal': 'التحليل الزمني والتسلسلي للأحداث: يركز على التسلسل الزمني والأنماط الزمنية للأحداث',
+        'custom': 'التخصيص اليدوي: اكتب الـ Prompt الذي تريد استخدامه بشكل مخصص'
+    };
+    
+    // تحميل الـ Prompt المحدد
+    function loadPromptPreset(presetValue) {
+        const customContainer = document.getElementById('customPromptContainer');
+        const descriptionDiv = document.getElementById('presetDescription');
+        const promptTextarea = document.getElementById('activityPrompt');
+        
+        if (presetValue === 'custom') {
+            // إظهار حقل الإدخال المخصص
+            customContainer.classList.remove('hidden');
+            promptTextarea.value = ''; // مسح النص الحالي
+            promptTextarea.placeholder = 'اكتب الـ Prompt المخصص هنا...';
+            descriptionDiv.innerHTML = `<strong>التخصيص اليدوي:</strong> اكتب الـ Prompt الذي تريد استخدامه بشكل مخصص`;
+        } else {
+            // إخفاء حقل الإدخال المخصص وتعيين الـ Prompt المحدد
+            customContainer.classList.add('hidden');
+            promptTextarea.value = promptPresets[presetValue];
+            descriptionDiv.innerHTML = `<strong>${getPresetDisplayName(presetValue)}:</strong> ${promptDescriptions[presetValue]}`;
+        }
+    }
+    
+    // الحصول على الاسم المعروض للـ Prompt
+    function getPresetDisplayName(presetValue) {
+        const presetNames = {
+            'forensic': '🔍 التحليل الشامل للأدلة الجنائية',
+            'threats': '⚠️ كشف التهديدات والأسلحة',
+            'theft': '💰 تحليل السرقة والاعتداء على الممتلكات', 
+            'behavior': '🚶 تحليل الحركات والسلوكيات المشبوهة',
+            'temporal': '⏰ التحليل الزمني والتسلسلي للأحداث',
+            'custom': '✏️ تخصيص يدوي'
+        };
+        return presetNames[presetValue] || presetValue;
     }
 
     // Check for active processes on page load
@@ -2721,6 +2923,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     document.addEventListener('DOMContentLoaded', function() {
         setupEnhancementSliders();
         setupAdvancedSettingsSliders();
+        loadPromptPreset('forensic');
     });
         // التحكم في إظهار قسم الضبط المتقدم
     function toggleAdvancedSettings(show) {
