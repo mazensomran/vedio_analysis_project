@@ -974,7 +974,17 @@ HTML_TEMPLATE = """
             align-items: center;
             gap: 0.5rem;
         }
-
+        .slider-value {
+            font-weight: bold;
+            color: var(--secondary-color);
+            background: #f8f9fa;
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            min-width: 40px;
+            display: inline-block;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -1031,7 +1041,7 @@ HTML_TEMPLATE = """
                             <input type="checkbox" id="enableFaces" >
                             <label for="enableFaces">👥 اكتشاف الوجوه</label>
                         </div>
-                        <div class="option-item" id="faceThresholdContainer";">
+                        <div class="option-item hidden" id="faceThresholdContainer";">
                             <label for="faceThreshold">عتبة كشف الوجوه (0.1 - 1.0):</label>
                             <input type="range" id="faceThreshold" min="0.1" max="1.0" step="0.01" value="0.3" class="slider">
                             <span id="faceThresholdValue">0.3</span>
@@ -1040,7 +1050,7 @@ HTML_TEMPLATE = """
                             <input type="checkbox" id="enableText" >
                             <label for="enableText">📝 استخراج النصوص</label>
                         </div>
-                        <div class="option-item" id="textThresholdContainer";">
+                        <div class="option-item hidden" id="textThresholdContainer";">
                             <label for="textThreshold">عتبة كشف النصوص (0.1 - 1.0):</label>
                             <input type="range" id="textThreshold" min="0.1" max="1.0" step="0.01" value="0.3" class="slider">
                             <span id="textThresholdValue">0.3</span>
@@ -1049,7 +1059,7 @@ HTML_TEMPLATE = """
                             <input type="checkbox" id="enableTracking" >
                             <label for="enableTracking">🔄 تتبع حركة الأشخاص</label>
                         </div>
-                        <div class="option-item" id="objectThresholdContainer";">
+                        <div class="option-item hidden" id="objectThresholdContainer";">
                             <label for="objectThreshold">عتبة كشف الكائنات (0.1 - 1.0):</label>
                             <input type="range" id="objectThreshold" min="0.1" max="01.0" step="0.01" value="0.5" class="slider">
                             <span id="objectThresholdValue">0.5</span>
@@ -1058,7 +1068,7 @@ HTML_TEMPLATE = """
                             <input type="checkbox" id="enableActivity" >
                             <label for="enableActivity">🎯 تحليل النشاط والبيئة</label>
                         </div>
-                        <div class="option-item" id="activityPromptContainer">
+                        <div class="option-item hidden" id="activityPromptContainer">
                             <label for="activityPromptPreset">نوع التحليل:</label>
                             <select id="activityPromptPreset" class="form-control" onchange="loadPromptPreset(this.value)">
                                 <option value="forensic">🔍 التحليل الشامل للأدلة الجنائية</option>
@@ -1078,18 +1088,18 @@ HTML_TEMPLATE = """
                                 <strong>التحليل الشامل للأدلة الجنائية:</strong> تحليل كامل للفيديو يشمل البيئة، الأشخاص، الأنشطة المشبوهة، وجمع الأدلة
                             </div>
                         </div>
-                        <div class="option-item" id="activityFpsContainer">
+                        <div class="option-item hidden" id="activityFpsContainer">
                             <label for="activityFps">دقة التحليل (FPS):</label>
                             <input type="number" id="activityFps" class="form-control" value="1" min="1" step="1">
                         </div>
                         <!-- إضافة قسم الضبط المتقدم -->
-                        <div class="option-item" id="advancedSettingsContainer">
+                        <div class="option-item hidden" id="advancedSettingsContainer">
                             <h4>⚙️ ضبط متقدم</h4>
                             <div class="options-grid">
                                 <div class="option-item">
                                     <label for="maxNewTokens">Max Tokens (1-500):</label>
                                     <input type="range" id="maxNewTokens" min="1" max="500" step="1" value="130" class="slider">
-                                    <span id="maxNewTokensValue">130</span>
+                                    <span id="maxNewTokensValue" class="slider-value">130</span>
                                 </div>
                                 <div class="option-item">
                                     <input type="checkbox" id="doSample">
@@ -1336,10 +1346,13 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         checkServerStatus();
         updateApiExamples();
         checkActiveProcesses();
+        setupEnhancementSliders();
+        setupAdvancedSettingsSliders();
+        loadPromptPreset('forensic');
 
-
+        initializeOptionVisibility();
         // تحكم في عتبة الوجوه
-        document.getElementById('enableFaces').addEventListener('change', function() {
+        ddocument.getElementById('enableFaces').addEventListener('change', function() {
             const container = document.getElementById('faceThresholdContainer');
             const slider = document.getElementById('faceThreshold');
             if (this.checked) {
@@ -1377,7 +1390,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         });
 
         // دالة مساعدة للتحكم في container بناءً على checkbox
-        function toggleContainer(checkboxId, containerId, sliderId) {
+        /*function toggleContainer(checkboxId, containerId, sliderId) {
             const checkbox = document.getElementById(checkboxId);
             const container = document.getElementById(containerId);
             const slider = document.getElementById(sliderId);
@@ -1451,25 +1464,38 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             });
         }
 
-        toggleActivityContainers('enableActivity', 'activityPromptContainer', 'activityFpsContainer', 'advancedSettingsContainer');
+        toggleActivityContainers('enableActivity', 'activityPromptContainer', 'activityFpsContainer', 'advancedSettingsContainer');*/
 
         // تحديث قيم السلايدرز (لعرض القيمة الحالية)
 
         function updateSliderValue(sliderId, valueId) {
             const slider = document.getElementById(sliderId);
             const valueSpan = document.getElementById(valueId);
+            
             if (slider && valueSpan) {
+                // تعيين القيمة الأولية
+                valueSpan.textContent = slider.value;
+                
+                // إضافة event listener للتحديث عند التغيير
                 slider.addEventListener('input', function() {
                     valueSpan.textContent = this.value;
                 });
-                // تعيين القيمة الأولية
-                valueSpan.textContent = slider.value;
+                
+                // أيضًا تحديث عند تحرير السلايدر
+                slider.addEventListener('change', function() {
+                    valueSpan.textContent = this.value;
+                });
             }
         }
         updateSliderValue('detectionStep', 'detectionStepValue');
         updateSliderValue('faceThreshold', 'faceThresholdValue');
         updateSliderValue('textThreshold', 'textThresholdValue');
         updateSliderValue('objectThreshold', 'objectThresholdValue');
+        // ✅ تحديث قيم سلايدرز الضبط المتقدم
+        setupAdvancedSettingsSliders();
+    
+        // ✅ تحميل الـ Prompt الافتراضي
+        loadPromptPreset('forensic');
 
         // توسيع textarea تلقائياً (اختياري لتحسين UX)
         const textarea = document.getElementById('activityPrompt');
@@ -1477,7 +1503,109 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
+        // ✅ إضافة event listeners إضافية للتأكد من عمل السلايدرز
+        setTimeout(() => {
+            console.log("🔧 Checking sliders initialization...");
+            setupAdvancedSettingsSliders();
+        }, 500);
     });
+
+    // ✅ دالة جديدة لتهيئة حالة الظهور الافتراضية
+    function initializeOptionVisibility() {
+        // التحكم في عتبة الوجوه
+        const enableFacesCheckbox = document.getElementById('enableFaces');
+        const faceThresholdContainer = document.getElementById('faceThresholdContainer');
+        const faceThresholdSlider = document.getElementById('faceThreshold');
+        
+        if (enableFacesCheckbox && faceThresholdContainer) {
+            // تعيين الحالة الافتراضية
+            if (!enableFacesCheckbox.checked) {
+                faceThresholdContainer.classList.add('hidden');
+                if (faceThresholdSlider) faceThresholdSlider.disabled = true;
+            }
+            
+            // إضافة event listener
+            enableFacesCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    faceThresholdContainer.classList.remove('hidden');
+                    if (faceThresholdSlider) faceThresholdSlider.disabled = false;
+                } else {
+                    faceThresholdContainer.classList.add('hidden');
+                    if (faceThresholdSlider) faceThresholdSlider.disabled = true;
+                }
+            });
+        }
+    
+        // التحكم في عتبة النصوص
+        const enableTextCheckbox = document.getElementById('enableText');
+        const textThresholdContainer = document.getElementById('textThresholdContainer');
+        const textThresholdSlider = document.getElementById('textThreshold');
+        
+        if (enableTextCheckbox && textThresholdContainer) {
+            if (!enableTextCheckbox.checked) {
+                textThresholdContainer.classList.add('hidden');
+                if (textThresholdSlider) textThresholdSlider.disabled = true;
+            }
+            
+            enableTextCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    textThresholdContainer.classList.remove('hidden');
+                    if (textThresholdSlider) textThresholdSlider.disabled = false;
+                } else {
+                    textThresholdContainer.classList.add('hidden');
+                    if (textThresholdSlider) textThresholdSlider.disabled = true;
+                }
+            });
+        }
+    
+        // التحكم في عتبة الكائنات
+        const enableTrackingCheckbox = document.getElementById('enableTracking');
+        const objectThresholdContainer = document.getElementById('objectThresholdContainer');
+        const objectThresholdSlider = document.getElementById('objectThreshold');
+        
+        if (enableTrackingCheckbox && objectThresholdContainer) {
+            if (!enableTrackingCheckbox.checked) {
+                objectThresholdContainer.classList.add('hidden');
+                if (objectThresholdSlider) objectThresholdSlider.disabled = true;
+            }
+            
+            enableTrackingCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    objectThresholdContainer.classList.remove('hidden');
+                    if (objectThresholdSlider) objectThresholdSlider.disabled = false;
+                } else {
+                    objectThresholdContainer.classList.add('hidden');
+                    if (objectThresholdSlider) objectThresholdSlider.disabled = true;
+                }
+            });
+        }
+    
+        // التحكم في عناصر تحليل النشاط
+        const enableActivityCheckbox = document.getElementById('enableActivity');
+        const activityPromptContainer = document.getElementById('activityPromptContainer');
+        const activityFpsContainer = document.getElementById('activityFpsContainer');
+        const advancedSettingsContainer = document.getElementById('advancedSettingsContainer');
+        
+        if (enableActivityCheckbox && activityPromptContainer) {
+            if (!enableActivityCheckbox.checked) {
+                activityPromptContainer.classList.add('hidden');
+                activityFpsContainer.classList.add('hidden');
+                advancedSettingsContainer.classList.add('hidden');
+            }
+            
+            enableActivityCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    activityPromptContainer.classList.remove('hidden');
+                    activityFpsContainer.classList.remove('hidden');
+                    advancedSettingsContainer.classList.remove('hidden');
+                } else {
+                    activityPromptContainer.classList.add('hidden');
+                    activityFpsContainer.classList.add('hidden');
+                    advancedSettingsContainer.classList.add('hidden');
+                }
+            });
+        }
+    }
 
     // Setup drag and drop for files
     function setupDragAndDrop() {
@@ -2937,10 +3065,41 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
 
     // تحديث قيم السلايدرز للضبط المتقدم
     function setupAdvancedSettingsSliders() {
-        updateSliderValue('temperature', 'temperatureValue');
-        updateSliderValue('topP', 'topPValue');
-        updateSliderValue('topK', 'topKValue');
-        updateSliderValue('maxNewTokens', 'maxNewTokensValue');
+        // تحديث جميع سلايدرز الضبط المتقدم
+        const advancedSliders = [
+            { id: 'maxNewTokens', valueId: 'maxNewTokensValue' },
+            { id: 'temperature', valueId: 'temperatureValue' },
+            { id: 'topP', valueId: 'topPValue' },
+            { id: 'topK', valueId: 'topKValue' }
+        ];
+    
+        advancedSliders.forEach(slider => {
+            updateAdvancedSliderValue(slider.id, slider.valueId);
+        });
+    }
+    
+    // دالة مخصصة لتحديث قيم الضبط المتقدم
+    function updateAdvancedSliderValue(sliderId, valueId) {
+        const slider = document.getElementById(sliderId);
+        const valueSpan = document.getElementById(valueId);
+        
+        if (slider && valueSpan) {
+            // تحديث القيمة فوراً عند التحميل
+            valueSpan.textContent = slider.value;
+            
+            // إضافة مستمع event للتحديث عند التغيير
+            slider.addEventListener('input', function() {
+                valueSpan.textContent = this.value;
+                console.log(`✅ ${sliderId} updated to: ${this.value}`); // للتdebug
+            });
+            
+            // إضافة مستمع event للتحديث عند تغيير الزر أيضاً
+            slider.addEventListener('change', function() {
+                valueSpan.textContent = this.value;
+            });
+        } else {
+            console.error(`❌ Element not found: ${sliderId} or ${valueId}`);
+        }
     }
     
 </script>
