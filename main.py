@@ -1096,10 +1096,23 @@ HTML_TEMPLATE = """
                         <div class="option-item hidden" id="advancedSettingsContainer">
                             <h4>⚙️ ضبط متقدم</h4>
                             <div class="options-grid">
+                            
                                 <div class="option-item">
-                                    <label for="maxNewTokens">Max Tokens (1-500):</label>
-                                    <input type="range" id="maxNewTokens" min="1" max="500" step="1" value="130" class="slider">
-                                    <span id="maxNewTokensValue" class="slider-value">130</span>
+                                    <input type="checkbox" id="enable_video_enhancement">
+                                    <label for="enable_video_enhancement">🎨 تحسين جودة الفيديو (للفيديوهات منخفضة الدقة)</label>
+                                    <small>يحسن وضوح الفيديو قبل التحليل - يستهلك ذاكرة إضافية</small>
+                                </div>
+                        
+                                <div class="option-item hidden" id="enhancementStrengthContainer">
+                                    <label for="enhancementStrength">قوة التحسين (1-5):</label>
+                                    <input type="range" id="enhancementStrength" min="1" max="5" step="1" value="2" class="slider">
+                                    <span id="enhancementStrengthValue">2</span>
+                                    <small>1 = تحسين خفيف (أسرع), 5 = تحسين قوي (أبطأ)</small>
+                                </div>
+                                <div class="option-item">
+                                    <label for="maxNewTokens">Max Tokens (1-1500):</label>
+                                    <input type="range" id="maxNewTokens" min="1" max="1500" step="10" value="600" class="slider">
+                                    <span id="maxNewTokensValue" class="slider-value">600</span>
                                 </div>
                                 <div class="option-item">
                                     <input type="checkbox" id="doSample">
@@ -1108,13 +1121,13 @@ HTML_TEMPLATE = """
                                 
                                 <div class="option-item">
                                     <label for="temperature">Temperature (0-1):</label>
-                                    <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.3" class="slider">
-                                    <span id="temperatureValue">0.3</span>
+                                    <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.2" class="slider">
+                                    <span id="temperatureValue">0.2</span>
                                 </div>
                                 <div class="option-item">
                                     <label for="topP">Top P (0-1):</label>
-                                    <input type="range" id="topP" min="0" max="1" step="0.01" value="0.9" class="slider">
-                                    <span id="topPValue">0.9</span>
+                                    <input type="range" id="topP" min="0" max="1" step="0.01" value="0.85" class="slider">
+                                    <span id="topPValue">0.85</span>
                                 </div>
                                 <div class="option-item">
                                     <label for="topK">Top K (1-100):</label>
@@ -1352,7 +1365,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
 
         initializeOptionVisibility();
         // تحكم في عتبة الوجوه
-        ddocument.getElementById('enableFaces').addEventListener('change', function() {
+        document.getElementById('enableFaces').addEventListener('change', function() {
             const container = document.getElementById('faceThresholdContainer');
             const slider = document.getElementById('faceThreshold');
             if (this.checked) {
@@ -1363,6 +1376,26 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 slider.disabled = true;
             }
         });
+        
+        // التحكم في خيار تحسين الفيديو
+        const enableVideoEnhancement = document.getElementById('enable_video_enhancement');
+        const enhancementContainer = document.getElementById('enhancementStrengthContainer');
+        
+        if (enableVideoEnhancement && enhancementContainer) {
+            // تعيين الحالة الافتراضية
+            if (!enableVideoEnhancement.checked) {
+                enhancementContainer.classList.add('hidden');
+            }
+            
+            // إضافة event listener
+            enableVideoEnhancement.addEventListener('change', function() {
+                if (this.checked) {
+                    enhancementContainer.classList.remove('hidden');
+                } else {
+                    enhancementContainer.classList.add('hidden');
+                }
+            });
+        }
 
         // تحكم في عتبة النصوص
         document.getElementById('enableText').addEventListener('change', function() {
@@ -1679,153 +1712,182 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     
     // تعريف الـ Prompts المحددة مسبقاً
     const promptPresets = {
-        'forensic': `You are a forensic video analysis expert. Analyze this surveillance footage systematically:
-    
-    **ENVIRONMENT & CONTEXT:**
-    - Describe the location, time of day, lighting conditions, and weather
-    - Identify the type of venue (store, street, building, etc.)
-    - Note any visible landmarks, signs, or distinctive features
-    
-    **PERSON ANALYSIS:**
-    - Count and describe all individuals (approximate age, gender, clothing, distinctive features)
-    - Identify masked individuals, people wearing unusual clothing, or attempting to conceal identity
-    - Track movements and interactions between people
-    
-    **SUSPICIOUS ACTIVITIES - PRIORITY DETECTION:**
-    🔴 **CRITICAL EVENTS:** Weapons presence, assaults, fights, shootings, kidnappings, robberies
-    🟡 **SUSPICIOUS BEHAVIORS:** Unauthorized entry, property damage, theft, hiding objects, rapid movements
-    🟢 **UNUSUAL PATTERNS:** Loitering, frequent coming/going, abandoned objects, vehicle circling
-    
-    **TEMPORAL ANALYSIS:**
-    - Note timestamps of significant events
-    - Document sequence of critical incidents
-    - Identify patterns in timing of activities
-    
-    **EVIDENCE DOCUMENTATION:**
-    - License plates, vehicle descriptions
-    - Visible faces (quality assessment for identification)
-    - Objects carried or exchanged
-    - Digital evidence (phones, cameras in use)
-    
-    Provide a detailed description and confidence levels for each observation. Highlight the three most serious incidents that require immediate investigation.`,
-    
-        'threats': `As a security threat detection specialist, focus specifically on:
-    
-    **WEAPONS & DANGEROUS OBJECTS:**
-    - Firearms (handguns, rifles, shotguns)
-    - Knives, blades, sharp objects
-    - Explosives, suspicious packages
-    - Tools used for breaking/entering (crowbars, hammers)
-    
-    **THREAT INDICATORS:**
-    - Aggressive body language, fighting stances
-    - Concealed hands, bulges in clothing suggesting hidden objects
-    - Protective gear (gloves, masks, helmets)
-    - Coordinated group movements suggesting planned action
-    
-    **IMMINENT DANGER SIGNALS:**
-    - Hostage situations, physical restraints
-    - Panic reactions from bystanders
-    - Rapid evacuation or hiding behaviors
-    - Sounds of gunshots, screams, breaking glass
-    
-    **RESPONSE ASSESSMENT:**
-    - Police/security presence and response time
-    - Civilian reactions and escape patterns
-    - Medical emergency responses
-    
-    Provide a detailed description and confidence levels for each observation. Prioritize immediate threats and provide practical recommendations for law enforcement responses.`,
-    
-        'theft': `Focus on property crimes and theft detection:
-    
-    **THEFT BEHAVIORS:**
-    - Shoplifting: concealing merchandise, avoiding cameras
-    - Bag/package tampering
-    - Unauthorized access to restricted areas
-    - Breaking into vehicles or buildings
-    
-    **PROPERTY DAMAGE:**
-    - Vandalism: graffiti, broken windows, damaged property
-    - Forced entry: broken locks, pried doors
-    - Arson attempts, fire-related activities
-    
-    **ACCOMPLICE PATTERNS:**
-    - Lookouts/distractions working with perpetrators
-    - Getaway vehicles and drivers
-    - Signal systems between individuals
-    
-    **EVIDENCE COLLECTION:**
-    - Clear facial captures of perpetrators
-    - Vehicle make/model/color/license plates
-    - Stolen items description and handling
-    - Escape routes and directions
-    
-    Provide a detailed description, specifying confidence levels for each observation. Document the complete timeline of the crime, from preparation to escape.`,
-    
-        'behavior': `Analyze behavioral patterns and suspicious movements:
-    
-    **SUSPICIOUS BEHAVIORAL CUES:**
-    - Nervousness: frequent looking around, checking watches
-    - Attempted disguise: hats, sunglasses, masks in inappropriate contexts
-    - Unnatural loitering without clear purpose
-    - Testing security measures (checking doors, cameras)
-    
-    **MOVEMENT ANALYSIS:**
-    - Erratic or evasive walking patterns
-    - Rapid direction changes to avoid detection
-    - Crouching, hiding, or moving in shadows
-    - Unusual gathering/dispersal patterns
-    
-    **PRE-INCIDENT INDICATORS:**
-    - Surveillance of locations (casing)
-    - Equipment preparation (putting on gloves, masks)
-    - Communication signals (phone calls, hand signals)
-    - Positioning for ambush or attack
-    
-    **CONTEXTUAL ABNORMALITIES:**
-    - Inappropriate clothing for weather/occasion
-    - Carrying unusual objects for the location
-    - Mismatched group behavior (some watching while others act)
-    
-    Provide a detailed description with confidence levels for each observation, and suggest follow-up monitoring actions.`,
-    
-        'temporal': `Conduct detailed temporal analysis of events:
-    
-    **CHRONOLOGICAL EVENT MAPPING:**
-    - Create minute-by-minute timeline of significant activities
-    - Document exact sequence of critical incidents
-    - Note duration of suspicious activities
-    
-    **PATTERN RECOGNITION:**
-    - Repetitive behaviors or regular visits
-    - Timing correlations between different individuals
-    - Peak activity periods and lulls
-    
-    **CAUSE-AND-EFFECT ANALYSIS:**
-    - Trigger events that initiate suspicious activities
-    - Chain reactions between different parties
-    - Response patterns to external stimuli
-    
-    **TIMING ANOMALIES:**
-    - Activities occurring at unusual hours
-    - Synchronized actions between distant individuals
-    - Precise timing suggesting planning/rehearsal
-    
-    **EVIDENCE TIMELINE:**
-    - First/last appearance of key individuals
-    - Time windows for critical evidentiary moments
-    - Duration of observable criminal acts
-    
-    Provide a detailed description and confidence levels for each observation, presenting the results in a timeline format consistent with the sequence of events and video frames.`
-    };
+        'forensic': `You are a forensic video analysis expert. Analyze this surveillance footage systematically with focus on detecting crimes and illegal activities:
+
+        **🔍 Environmental & Context Analysis:**
+        - Describe location, time, lighting conditions, and weather
+        - Identify venue type (store, street, building, etc.)
+        - Note visible landmarks, signs, or distinctive features
+        
+        **👥 Suspect Person Analysis:**
+        - Count and describe all individuals (approximate age, gender, clothing, distinctive features)
+        - Identify masked individuals, people wearing unusual clothing, or attempting to conceal identity
+        - Track movements and interactions between people
+        
+        **🚨 Criminal Activities - Priority Detection:**
+        🔴 **Critical Events:** Weapons presence, assaults, fights, shootings, kidnappings, armed robberies
+        🟡 **Suspicious Behaviors:** Unauthorized entry, property damage, theft, hiding objects, rapid movements
+        🟢 **Unusual Patterns:** Loitering, frequent coming/going, abandoned objects, vehicle circling
+        
+        **⚖️ Specific Criminal Indicators:**
+        - Carrying bladed weapons or firearms
+        - Breaking locks or doors
+        - Shoplifting or property theft
+        - Physical assault on persons
+        - Exchange of suspicious materials (drugs)
+        - Use of force or threats
+        
+        **⏱️ Temporal Analysis:**
+        - Record exact timestamps of significant events
+        - Document sequence of critical incidents
+        - Identify timing patterns in activities
+        
+        **📸 Evidence Collection:**
+        - License plates, vehicle descriptions
+        - Clear faces (quality assessment for identification)
+        - Objects carried or exchanged
+        - Digital evidence (phones, cameras in use)
+        
+        Provide detailed description and confidence levels for each observation. Highlight the three most serious incidents requiring immediate investigation.`,
+        
+            'threats': `As a security threat detection specialist, focus specifically on:
+        
+        **🔫 Weapons & Dangerous Objects:**
+        - Firearms (handguns, rifles, shotguns)
+        - Knives, sharp objects, hazardous materials
+        - Explosives, suspicious packages
+        - Tools used for breaking/entering (crowbars, hammers)
+        
+        **🚩 Threat Indicators:**
+        - Aggressive body language, fighting stances
+        - Concealed hands, clothing bulges suggesting hidden objects
+        - Protective gear (gloves, masks, helmets)
+        - Coordinated group movements suggesting planned action
+        
+        **⚠️ Imminent Danger Signals:**
+        - Hostage situations, physical restraints
+        - Panic reactions from bystanders
+        - Rapid evacuation or hiding behaviors
+        - Sounds of gunshots, screams, breaking glass
+        
+        **👮 Response Assessment:**
+        - Police/security presence and response time
+        - Civilian reactions and escape patterns
+        - Medical emergency responses
+        
+        Provide detailed description with confidence levels for each observation. Prioritize immediate threats and provide practical recommendations for law enforcement responses.`,
+        
+            'theft': `Focus on property crimes and theft detection:
+        
+        **🛍️ Theft Behaviors:**
+        - Shoplifting: concealing merchandise, avoiding cameras
+        - Bag/package tampering
+        - Unauthorized access to restricted areas
+        - Breaking into vehicles or buildings
+        
+        **💥 Property Assault:**
+        - Vandalism: graffiti, broken windows, damaged property
+        - Forced entry: broken locks, pried doors
+        - Arson attempts, fire-related activities
+        
+        **👥 Accomplice Patterns:**
+        - Lookouts/distractions working with perpetrators
+        - Getaway vehicles and drivers
+        - Signal systems between individuals
+        
+        **📹 Evidence Collection:**
+        - Clear facial captures of perpetrators
+        - Vehicle make/model/color/license plates
+        - Stolen items description and handling
+        - Escape routes and directions
+        
+        Provide detailed description, specifying confidence levels for each observation. Document the complete crime timeline from preparation to escape.`,
+        
+            'behavior': `Analyze behavioral patterns and suspicious movements:
+        
+        **🤔 Suspicious Behavioral Cues:**
+        - Nervousness: frequent looking around, checking watches
+        - Attempted disguise: hats, sunglasses, masks in inappropriate contexts
+        - Unnatural loitering without clear purpose
+        - Testing security measures (checking doors, cameras)
+        
+        **🚶 Movement Analysis:**
+        - Erratic or evasive walking patterns
+        - Rapid direction changes to avoid detection
+        - Crouching, hiding, or moving in shadows
+        - Unusual gathering/dispersal patterns
+        
+        **🔍 Pre-incident Indicators:**
+        - Surveillance of locations (casing)
+        - Equipment preparation (putting on gloves, masks)
+        - Communication signals (phone calls, hand signals)
+        - Positioning for ambush or attack
+        
+        **🎭 Contextual Abnormalities:**
+        - Inappropriate clothing for weather/occasion
+        - Carrying unusual objects for the location
+        - Mismatched group behavior (some watching while others act)
+        
+        Provide detailed description with confidence levels for each observation, and suggest follow-up monitoring actions.`,
+        
+            'temporal': `Conduct detailed temporal analysis of events:
+        
+        **⏰ Chronological Event Mapping:**
+        - Create minute-by-minute timeline of significant activities
+        - Document exact sequence of critical incidents
+        - Note duration of suspicious activities
+        
+        **🔄 Pattern Recognition:**
+        - Repetitive behaviors or regular visits
+        - Timing correlations between different individuals
+        - Peak activity periods and lulls
+        
+        **🔗 Cause-and-Effect Analysis:**
+        - Trigger events initiating suspicious activities
+        - Chain reactions between different parties
+        - Response patterns to external stimuli
+        
+        **⏱️ Timing Anomalies:**
+        - Activities occurring at unusual hours
+        - Synchronized actions between distant individuals
+        - Precise timing suggesting planning/rehearsal
+        
+        **📊 Evidence Timeline:**
+        - First/last appearance of key individuals
+        - Time windows for critical evidentiary moments
+        - Duration of observable criminal acts
+        
+        Provide detailed description and confidence levels for each observation, presenting results in timeline format consistent with event sequence and video frames.`,
+        
+        'emergency': `🔴 Emergency Analysis - For Immediate Response:
+        
+        **🚨 Immediate Danger Assessment:**
+        - Is there immediate danger to lives?
+        - Are there injuries or need for medical assistance?
+        - Is the crime still ongoing?
+        
+        **📞 Urgent Contact Information:**
+        - Exact location of incident
+        - Number of suspects and movement direction
+        - Type of weapons used (if any)
+        - Number and condition of victims
+        
+        **🎯 Response Priorities:**
+        - Secure area and protect civilians
+        - Track and contain suspects
+        - Provide urgent medical assistance
+        - Preserve crime scene
+        
+        Provide brief emergency report with most critical information for immediate response.`};
     
     // أوصاف الـ Prompts
     const promptDescriptions = {
-        'forensic': 'التحليل الشامل للأدلة الجنائية: تحليل كامل للفيديو يشمل البيئة، الأشخاص، الأنشطة المشبوهة، وجمع الأدلة',
-        'threats': 'كشف التهديدات والأسلحة: يركز على اكتشاف الأسلحة والأنشطة الخطرة والاستجابة للطوارئ',
-        'theft': 'تحليل السرقة والاعتداء على الممتلكات: مخصص لجرائم السرقة والتخريب والاعتداء على الممتلكات',
-        'behavior': 'تحليل الحركات والسلوكيات المشبوهة: يرصد السلوكيات غير الطبيعية والحركات المشبوهة',
-        'temporal': 'التحليل الزمني والتسلسلي للأحداث: يركز على التسلسل الزمني والأنماط الزمنية للأحداث',
+        'forensic': 'التحليل الجنائي الشامل: فحص كامل للفيديو مع التركيز على الأدلة الجنائية والأنشطة الإجرامية',
+        'threats': 'كشف التهديدات الفورية: يركز على الأسلحة والأنشطة الخطرة والاستجابة للطوارئ',
+        'theft': 'جرائم الممتلكات: مخصص للسرقة والتخريب والاعتداء على الممتلكات',
+        'behavior': 'السلوكيات المشبوهة: يرصد الحركات والأنماط غير الطبيعية',
+        'temporal': 'التحليل الزمني: يركز على التسلسل الزمني والأنماط الزمنية للأحداث',
+        'emergency': 'الطوارئ والاستجابة السريعة: لتقييم المواقف الخطرة فورياً',
         'custom': 'التخصيص اليدوي: اكتب الـ Prompt الذي تريد استخدامه بشكل مخصص'
     };
     
@@ -2104,6 +2166,10 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     const videoWithTimestamp = `${analyzedVideoPath}?t=${Date.now()}`;
     const facesFolderPath = `/outputs/${currentProcessId}/faces/`;
     const outputFolderPath = `/outputs/${currentProcessId}/`;
+    
+    currentFacesPage = 1; 
+    const facesPerPageSelect = document.getElementById('facesPerPageSelect');
+    facesPerPage = facesPerPageSelect ? parseInt(facesPerPageSelect.value) : 4;
 
     const maxFacesToShow = document.getElementById('maxFacesDisplay') ? 
     parseInt(document.getElementById('maxFacesDisplay').value) || 4 : 4;
@@ -2142,7 +2208,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                     </select>
                 </div>
             </div>
-
+    
             ${currentPageFaces.length > 0 ? `
                 <div class="face-grid">
                     ${currentPageFaces.map(face => `
@@ -2162,7 +2228,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                         </div>
                     `).join('')}
                 </div>
-            ` : '<p class="no-faces">لا توجد وجوه في هذه الصفحة</p>'}
+            ` : '<p class="no-faces">' + (totalFaces > 0 ? 'لا توجد وجوه في هذه الصفحة' : 'لم يتم اكتشاف أي وجوه') + '</p>'}
         </div>
     `;
 
@@ -2500,6 +2566,8 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     function analyzeNewVideo() {
         currentProcessId = null;
         clearInterval(checkInterval);
+        currentFacesPage = 1; 
+        facesPerPage = 4;
         document.getElementById('fileDropArea').innerHTML = `
             <p>📁 اسحب وأسقط ملف الفيديو هنا أو</p>
             <input type="file" id="fileInput" class="file-input" accept="video/*">
@@ -3070,7 +3138,8 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             { id: 'maxNewTokens', valueId: 'maxNewTokensValue' },
             { id: 'temperature', valueId: 'temperatureValue' },
             { id: 'topP', valueId: 'topPValue' },
-            { id: 'topK', valueId: 'topKValue' }
+            { id: 'topK', valueId: 'topKValue' },
+            { id: 'enhancementStrength', valueId: 'enhancementStrengthValue' }
         ];
     
         advancedSliders.forEach(slider => {
@@ -3147,20 +3216,20 @@ async def analyze_video_endpoint(
         enable_text_detection: bool = Form(True),
         enable_tracking: bool = Form(True),
         enable_activity_recognition: bool = Form(True),
+        enable_video_enhancement: bool = Form(False),
+        enhancement_strength: int = Form(2),
         activity_prompt: Optional[str] = Form("You are a video surveillance expert, and your task is to describe the key activities in the video and the environment in which the video events take place, while analyzing the surveillance records provided for each frame. Your goal is to describe unusual activities and notable events, such as numbers, times, and dates, the presence of weapons, masked individuals, or people with unusual appearances, and exceptional incidents such as shootings, thefts, break-ins, and rapid or sudden movements, based on the descriptions provided for each frame. Highlight any unusual activities or problems while maintaining continuity of context. Your summary style should focus on identifying specific incidents, such as potential police activity, accidents, or unusual gatherings, and highlight normal events to provide context about the environment. For example, someone steals from a store, places merchandise in their bag, assaults someone, breaks into a place, fires a gun, is kidnapped, or breaks or removes a window. Summarize what happened in the video. Answer concisely.."),
-        # إضافة prompt
         activity_fps: Optional[float] = Form(1.0),
-        face_threshold: float = Form(0.3),  # قيمة افتراضية من config
+        face_threshold: float = Form(0.3),
         text_threshold: float = Form(0.3),
         object_threshold: float = Form(0.5),
         detection_step: int = Form(1),
         advanced_settings: bool = Form(False),
-        max_new_tokens: int = Form(130),
-        temperature: float = Form(0.3),
-        top_p: float = Form(0.9),
-        top_k: int = Form(50),
-        do_sample: bool = Form(True),
-
+        max_new_tokens: Optional[int] = Form(600),
+        temperature: Optional[float] = Form(0.3),
+        top_p: Optional[float] = Form(0.9),
+        top_k: Optional[int] = Form(50),
+        do_sample: Optional[bool] = Form(True),
 ):
     try:
         if not file.content_type.startswith('video/'):
@@ -3182,27 +3251,42 @@ async def analyze_video_endpoint(
         with open(input_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        max_new_tokens_value = max_new_tokens if max_new_tokens is not None else 600
+        temperature_value = temperature if temperature is not None else 0.3
+        top_p_value = top_p if top_p is not None else 0.9
+        top_k_value = top_k if top_k is not None else 50
+        do_sample_value = do_sample if do_sample is not None else True
+
+        print(f"🔧 معاملات النموذج المستلمة في endpoint:")
+        print(f"max_new_tokens: {max_new_tokens} -> {max_new_tokens_value}")
+        print(f"temperature: {temperature} -> {temperature_value}")
+        print(f"top_p: {top_p} -> {top_p_value}")
+        print(f"top_k: {top_k} -> {top_k_value}")
+        print(f"do_sample: {do_sample} -> {do_sample_value}")
+
         # إعداد خيارات المعالجة
         processing_options = {
-
             "enable_audio_transcription": enable_audio_transcription,
             "enable_face_detection": enable_face_detection,
             "enable_text_detection": enable_text_detection,
             "enable_tracking": enable_tracking,
             "enable_activity_recognition": enable_activity_recognition,
             "original_filename": file.filename,
-            "activity_prompt": activity_prompt,  # تمرير الـ prompt
-            "activity_fps": activity_fps,  # تمرير الـ fsp
+            "activity_prompt": activity_prompt,
+            "activity_fps": activity_fps,
             "face_threshold": face_threshold,
             "text_threshold": text_threshold,
             "object_threshold": object_threshold,
             "detection_step": detection_step,
             "advanced_settings": advanced_settings,
-            "temperature": temperature if advanced_settings else None,
-            "top_p": top_p if advanced_settings else None,
-            "top_k": top_k if advanced_settings else None,
-            "do_sample": do_sample if advanced_settings else None,
-            "max_new_tokens": max_new_tokens if advanced_settings else None,
+            # تمرير القيم المحسنة والمعالجة
+            "max_new_tokens": max_new_tokens_value,
+            "temperature": temperature_value,
+            "top_p": top_p_value,
+            "top_k": top_k_value,
+            "do_sample": do_sample_value,
+            "enable_video_enhancement": enable_video_enhancement,
+            "enhancement_strength": enhancement_strength,
         }
 
         # إضافة العملية إلى القائمة النشطة
@@ -3234,7 +3318,8 @@ async def analyze_video_endpoint(
 
     except Exception as e:
         print(f"❌ خطأ في analyze-video: {str(e)}")
-        monitor.remove_process(process_id)
+        if 'process_id' in locals():
+            monitor.remove_process(process_id)
         raise HTTPException(status_code=500, detail=f"خطأ في معالجة الفيديو: {str(e)}")
 
 
