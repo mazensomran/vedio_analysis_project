@@ -6,7 +6,7 @@ from collections import Counter
 import logging
 from model_loader import ModelLoader
 from translation_utils import MarianTranslator
-# from qwen2_VL import Qwen2_VL # تأكد من وجود هذا الاستيراد
+from models import VideoEnhancer
 from PIL import Image
 from qwen_vl_utils import process_vision_info
 import traceback
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 model_loader = ModelLoader()
 translator = MarianTranslator()  # تهيئة المترجم هنا
-
+video_enhancer = VideoEnhancer()
 
 def move_to_device(obj, device):
     """نقل كل tensors داخل dict/list/tensor إلى نفس الجهاز"""
@@ -50,11 +50,30 @@ class ActivityRecognizer:
             self.device = None
             print(f"❌ فشل تهيئة ActivityRecognizer. فشل تحميل النماذج: {e}   traceback  {traceback.format_exc()}")
 
-    def recognize_activity(self, prompt: str, video_path: str, fsp: float, pixels_size: int,max_new_tokens: int=130, temperature: float = 0.7, top_p: float = 0.9, top_k: int = 50, do_sample: bool = True):
-        """
-        تقوم هذه الدالة بتحليل النشاط والبيئة باستخدام Qwen2-VL.
-        يمكنها العمل على إطار واحد أو تجميع الإطارات في دفعات.
-        """
+    def recognize_activity(self, prompt: str, video_path: str, fsp: float, pixels_size: int,
+                           max_new_tokens: int = 600, temperature: float = 0.3,
+                           top_p: float = 0.9, top_k: int = 50, do_sample: bool = True,
+                           enable_enhancement: bool = False, enhancement_strength: int = 2):
+
+        # معالجة القيم None
+        max_new_tokens = max_new_tokens if max_new_tokens is not None else 600
+        temperature = temperature if temperature is not None else 0.3
+        top_p = top_p if top_p is not None else 0.9
+        top_k = top_k if top_k is not None else 50
+        do_sample = do_sample if do_sample is not None else True
+
+        print("✅ معاملات النموذج بعد المعالجة:")
+        print(
+            f"max_new_tokens={max_new_tokens}, temperature={temperature}, top_p={top_p}, top_k={top_k}, do_sample={do_sample}")
+        print(f"enable_enhancement={enable_enhancement}, enhancement_strength={enhancement_strength}")
+
+        # تحسين الفيديو إذا كان مطلوباً
+        final_video_path = video_path
+        if enable_enhancement:
+            print("🎨 تفعيل تحسين جودة الفيديو...")
+            final_video_path = video_enhancer.enhance_video(video_path, enhancement_strength)
+            print(f"📹 مسار الفيديو النهائي: {final_video_path}")
+
         messages = [
             {
                 "role": "user",
@@ -99,10 +118,8 @@ class ActivityRecognizer:
                 top_k=top_k,
                 do_sample=do_sample,
             )
-        # Trim the generated output to remove the input prompt
-        # generated_ids_trimmed = [
-        #     out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
-        # ]
+
+
         generated_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs["input_ids"], generated_ids)
         ]
