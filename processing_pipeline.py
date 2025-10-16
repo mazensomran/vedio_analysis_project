@@ -1,4 +1,3 @@
-
 import cv2
 import json
 from pathlib import Path
@@ -17,7 +16,7 @@ from translation_utils import MarianTranslator
 from config import UPLOAD_DIR, OUTPUTS_DIR, PROCESSING_CONFIG, MODEL_CONFIG
 from database import db
 # استيراد الفئات المعدلة
-from models import FaceDetector, TextDetector, SpeechRecognizer, ObjectTracker, FrameEnhancer
+from models import FaceDetector, TextDetector, SpeechRecognizer, ObjectTracker, FrameEnhancer, VideoEnhancer
 from activity_recognizer import ActivityRecognizer
 from model_loader import model_loader
 import gc
@@ -455,16 +454,42 @@ def process_video(input_path: str, process_id: str, options: Dict[str, Any]):
             activity_prompt_text = options.get("activity_prompt",
                                                "Describe the main activities and environment in the video.")
 
+            max_new_tokens = options.get("max_new_tokens", 600)
+            temperature = options.get("temperature", 0.3)
+            top_p = options.get("top_p", 0.9)
+            top_k = options.get("top_k", 50)
+            do_sample = options.get("do_sample", True)
+
+            # تحويل القيم إلى الأنواع الصحيحة
+            try:
+                max_new_tokens = int(max_new_tokens) if max_new_tokens is not None else 600
+                temperature = float(temperature) if temperature is not None else 0.3
+                top_p = float(top_p) if top_p is not None else 0.9
+                top_k = int(top_k) if top_k is not None else 50
+                do_sample = bool(do_sample) if do_sample is not None else True
+            except (ValueError, TypeError) as e:
+                print(f"⚠️ خطأ في تحويل معاملات النموذج، استخدام القيم الافتراضية: {e}")
+                max_new_tokens = 600
+                temperature = 0.3
+                top_p = 0.9
+                top_k = 50
+                do_sample = True
+
+            print(
+                f"🔧 معاملات النموذج المرسلة: max_new_tokens={max_new_tokens}, temperature={temperature}, top_p={top_p}, top_k={top_k}, do_sample={do_sample}")
+
             activity_analysis_en = activity_recognizer.recognize_activity(
                 prompt=activity_prompt_text,
                 video_path=input_path,
                 fsp=activity_analysis_fps,
                 pixels_size=336,
-                max_new_tokens = options.get("max_new_tokens", 130),
-                temperature=options.get("temperature", 0.3),
-                top_p=options.get("top_p", 0.9),
-                top_k=options.get("top_k", 50),
-                do_sample=options.get("do_sample", True) if options.get("advanced_settings", False) else True
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                do_sample=do_sample,
+                enable_enhancement=options.get("enable_video_enhancement", False),
+                enhancement_strength=options.get("enhancement_strength", 2)
             )
 
             activity_analysis_ar = translator.translate(activity_analysis_en)
