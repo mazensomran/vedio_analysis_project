@@ -957,7 +957,7 @@ HTML_TEMPLATE = """
                 grid-template-columns: 1fr;
             }
         }
-        
+
                 /* تنسيق قسم الضبط المتقدم */
         .advanced-settings {
             background: #f8f9fa;
@@ -1078,12 +1078,12 @@ HTML_TEMPLATE = """
                                 <option value="temporal">⏰ التحليل الزمني والتسلسلي للأحداث</option>
                                 <option value="custom">✏️ تخصيص يدوي (اكتب Prompt خاص)</option>
                             </select>
-                            
+
                             <div id="customPromptContainer" class="hidden" style="margin-top: 10px;">
                                 <label for="activityPrompt">أدخل الـ Prompt المخصص:</label>
                                 <textarea id="activityPrompt" rows="3" class="form-control" placeholder="اكتب مطالبة مفصلة هنا..."></textarea>
                             </div>
-                            
+
                             <div id="presetDescription" class="status-message status-info" style="margin-top: 10px; font-size: 0.9em;">
                                 <strong>التحليل الشامل للأدلة الجنائية:</strong> تحليل كامل للفيديو يشمل البيئة، الأشخاص، الأنشطة المشبوهة، وجمع الأدلة
                             </div>
@@ -1096,13 +1096,13 @@ HTML_TEMPLATE = """
                         <div class="option-item hidden" id="advancedSettingsContainer">
                             <h4>⚙️ ضبط متقدم</h4>
                             <div class="options-grid">
-                            
+
                                 <div class="option-item">
                                     <input type="checkbox" id="enable_video_enhancement">
                                     <label for="enable_video_enhancement">🎨 تحسين جودة الفيديو (للفيديوهات منخفضة الدقة)</label>
                                     <small>يحسن وضوح الفيديو قبل التحليل - يستهلك ذاكرة إضافية</small>
                                 </div>
-                        
+
                                 <div class="option-item hidden" id="enhancementStrengthContainer">
                                     <label for="enhancementStrength">قوة التحسين (1-5):</label>
                                     <input type="range" id="enhancementStrength" min="1" max="5" step="1" value="2" class="slider">
@@ -1118,7 +1118,7 @@ HTML_TEMPLATE = """
                                     <input type="checkbox" id="doSample">
                                     <label for="doSample">Do Sample</label>
                                 </div>
-                                
+
                                 <div class="option-item">
                                     <label for="temperature">Temperature (0-1):</label>
                                     <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.2" class="slider">
@@ -1376,17 +1376,17 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 slider.disabled = true;
             }
         });
-        
+
         // التحكم في خيار تحسين الفيديو
         const enableVideoEnhancement = document.getElementById('enable_video_enhancement');
         const enhancementContainer = document.getElementById('enhancementStrengthContainer');
-        
+
         if (enableVideoEnhancement && enhancementContainer) {
             // تعيين الحالة الافتراضية
             if (!enableVideoEnhancement.checked) {
                 enhancementContainer.classList.add('hidden');
             }
-            
+
             // إضافة event listener
             enableVideoEnhancement.addEventListener('change', function() {
                 if (this.checked) {
@@ -1504,16 +1504,16 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         function updateSliderValue(sliderId, valueId) {
             const slider = document.getElementById(sliderId);
             const valueSpan = document.getElementById(valueId);
-            
+
             if (slider && valueSpan) {
                 // تعيين القيمة الأولية
                 valueSpan.textContent = slider.value;
-                
+
                 // إضافة event listener للتحديث عند التغيير
                 slider.addEventListener('input', function() {
                     valueSpan.textContent = this.value;
                 });
-                
+
                 // أيضًا تحديث عند تحرير السلايدر
                 slider.addEventListener('change', function() {
                     valueSpan.textContent = this.value;
@@ -1526,7 +1526,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         updateSliderValue('objectThreshold', 'objectThresholdValue');
         // ✅ تحديث قيم سلايدرز الضبط المتقدم
         setupAdvancedSettingsSliders();
-    
+
         // ✅ تحميل الـ Prompt الافتراضي
         loadPromptPreset('forensic');
 
@@ -1549,14 +1549,14 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         const enableFacesCheckbox = document.getElementById('enableFaces');
         const faceThresholdContainer = document.getElementById('faceThresholdContainer');
         const faceThresholdSlider = document.getElementById('faceThreshold');
-        
+
         if (enableFacesCheckbox && faceThresholdContainer) {
             // تعيين الحالة الافتراضية
             if (!enableFacesCheckbox.checked) {
                 faceThresholdContainer.classList.add('hidden');
                 if (faceThresholdSlider) faceThresholdSlider.disabled = true;
             }
-            
+
             // إضافة event listener
             enableFacesCheckbox.addEventListener('change', function() {
                 if (this.checked) {
@@ -1568,18 +1568,18 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 }
             });
         }
-    
+
         // التحكم في عتبة النصوص
         const enableTextCheckbox = document.getElementById('enableText');
         const textThresholdContainer = document.getElementById('textThresholdContainer');
         const textThresholdSlider = document.getElementById('textThreshold');
-        
+
         if (enableTextCheckbox && textThresholdContainer) {
             if (!enableTextCheckbox.checked) {
                 textThresholdContainer.classList.add('hidden');
                 if (textThresholdSlider) textThresholdSlider.disabled = true;
             }
-            
+
             enableTextCheckbox.addEventListener('change', function() {
                 if (this.checked) {
                     textThresholdContainer.classList.remove('hidden');
@@ -1590,18 +1590,18 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 }
             });
         }
-    
+
         // التحكم في عتبة الكائنات
         const enableTrackingCheckbox = document.getElementById('enableTracking');
         const objectThresholdContainer = document.getElementById('objectThresholdContainer');
         const objectThresholdSlider = document.getElementById('objectThreshold');
-        
+
         if (enableTrackingCheckbox && objectThresholdContainer) {
             if (!enableTrackingCheckbox.checked) {
                 objectThresholdContainer.classList.add('hidden');
                 if (objectThresholdSlider) objectThresholdSlider.disabled = true;
             }
-            
+
             enableTrackingCheckbox.addEventListener('change', function() {
                 if (this.checked) {
                     objectThresholdContainer.classList.remove('hidden');
@@ -1612,20 +1612,20 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                 }
             });
         }
-    
+
         // التحكم في عناصر تحليل النشاط
         const enableActivityCheckbox = document.getElementById('enableActivity');
         const activityPromptContainer = document.getElementById('activityPromptContainer');
         const activityFpsContainer = document.getElementById('activityFpsContainer');
         const advancedSettingsContainer = document.getElementById('advancedSettingsContainer');
-        
+
         if (enableActivityCheckbox && activityPromptContainer) {
             if (!enableActivityCheckbox.checked) {
                 activityPromptContainer.classList.add('hidden');
                 activityFpsContainer.classList.add('hidden');
                 advancedSettingsContainer.classList.add('hidden');
             }
-            
+
             enableActivityCheckbox.addEventListener('change', function() {
                 if (this.checked) {
                     activityPromptContainer.classList.remove('hidden');
@@ -1709,7 +1709,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             }
         }
     }
-    
+
     // تعريف الـ Prompts المحددة مسبقاً
     const promptPresets = {
         'forensic': `You are a forensic video analysis expert. Analyze this surveillance footage systematically with focus on detecting crimes and illegal activities:
@@ -1718,17 +1718,17 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         - Describe location, time, lighting conditions, and weather
         - Identify venue type (store, street, building, etc.)
         - Note visible landmarks, signs, or distinctive features
-        
+
         **👥 Suspect Person Analysis:**
         - Count and describe all individuals (approximate age, gender, clothing, distinctive features)
         - Identify masked individuals, people wearing unusual clothing, or attempting to conceal identity
         - Track movements and interactions between people
-        
+
         **🚨 Criminal Activities - Priority Detection:**
         🔴 **Critical Events:** Weapons presence, assaults, fights, shootings, kidnappings, armed robberies
         🟡 **Suspicious Behaviors:** Unauthorized entry, property damage, theft, hiding objects, rapid movements
         🟢 **Unusual Patterns:** Loitering, frequent coming/going, abandoned objects, vehicle circling
-        
+
         **⚖️ Specific Criminal Indicators:**
         - Carrying bladed weapons or firearms
         - Breaking locks or doors
@@ -1736,150 +1736,150 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         - Physical assault on persons
         - Exchange of suspicious materials (drugs)
         - Use of force or threats
-        
+
         **⏱️ Temporal Analysis:**
         - Record exact timestamps of significant events
         - Document sequence of critical incidents
         - Identify timing patterns in activities
-        
+
         **📸 Evidence Collection:**
         - License plates, vehicle descriptions
         - Clear faces (quality assessment for identification)
         - Objects carried or exchanged
         - Digital evidence (phones, cameras in use)
-        
+
         Provide detailed description and confidence levels for each observation. Highlight the three most serious incidents requiring immediate investigation.`,
-        
+
             'threats': `As a security threat detection specialist, focus specifically on:
-        
+
         **🔫 Weapons & Dangerous Objects:**
         - Firearms (handguns, rifles, shotguns)
         - Knives, sharp objects, hazardous materials
         - Explosives, suspicious packages
         - Tools used for breaking/entering (crowbars, hammers)
-        
+
         **🚩 Threat Indicators:**
         - Aggressive body language, fighting stances
         - Concealed hands, clothing bulges suggesting hidden objects
         - Protective gear (gloves, masks, helmets)
         - Coordinated group movements suggesting planned action
-        
+
         **⚠️ Imminent Danger Signals:**
         - Hostage situations, physical restraints
         - Panic reactions from bystanders
         - Rapid evacuation or hiding behaviors
         - Sounds of gunshots, screams, breaking glass
-        
+
         **👮 Response Assessment:**
         - Police/security presence and response time
         - Civilian reactions and escape patterns
         - Medical emergency responses
-        
+
         Provide detailed description with confidence levels for each observation. Prioritize immediate threats and provide practical recommendations for law enforcement responses.`,
-        
+
             'theft': `Focus on property crimes and theft detection:
-        
+
         **🛍️ Theft Behaviors:**
         - Shoplifting: concealing merchandise, avoiding cameras
         - Bag/package tampering
         - Unauthorized access to restricted areas
         - Breaking into vehicles or buildings
-        
+
         **💥 Property Assault:**
         - Vandalism: graffiti, broken windows, damaged property
         - Forced entry: broken locks, pried doors
         - Arson attempts, fire-related activities
-        
+
         **👥 Accomplice Patterns:**
         - Lookouts/distractions working with perpetrators
         - Getaway vehicles and drivers
         - Signal systems between individuals
-        
+
         **📹 Evidence Collection:**
         - Clear facial captures of perpetrators
         - Vehicle make/model/color/license plates
         - Stolen items description and handling
         - Escape routes and directions
-        
+
         Provide detailed description, specifying confidence levels for each observation. Document the complete crime timeline from preparation to escape.`,
-        
+
             'behavior': `Analyze behavioral patterns and suspicious movements:
-        
+
         **🤔 Suspicious Behavioral Cues:**
         - Nervousness: frequent looking around, checking watches
         - Attempted disguise: hats, sunglasses, masks in inappropriate contexts
         - Unnatural loitering without clear purpose
         - Testing security measures (checking doors, cameras)
-        
+
         **🚶 Movement Analysis:**
         - Erratic or evasive walking patterns
         - Rapid direction changes to avoid detection
         - Crouching, hiding, or moving in shadows
         - Unusual gathering/dispersal patterns
-        
+
         **🔍 Pre-incident Indicators:**
         - Surveillance of locations (casing)
         - Equipment preparation (putting on gloves, masks)
         - Communication signals (phone calls, hand signals)
         - Positioning for ambush or attack
-        
+
         **🎭 Contextual Abnormalities:**
         - Inappropriate clothing for weather/occasion
         - Carrying unusual objects for the location
         - Mismatched group behavior (some watching while others act)
-        
+
         Provide detailed description with confidence levels for each observation, and suggest follow-up monitoring actions.`,
-        
+
             'temporal': `Conduct detailed temporal analysis of events:
-        
+
         **⏰ Chronological Event Mapping:**
         - Create minute-by-minute timeline of significant activities
         - Document exact sequence of critical incidents
         - Note duration of suspicious activities
-        
+
         **🔄 Pattern Recognition:**
         - Repetitive behaviors or regular visits
         - Timing correlations between different individuals
         - Peak activity periods and lulls
-        
+
         **🔗 Cause-and-Effect Analysis:**
         - Trigger events initiating suspicious activities
         - Chain reactions between different parties
         - Response patterns to external stimuli
-        
+
         **⏱️ Timing Anomalies:**
         - Activities occurring at unusual hours
         - Synchronized actions between distant individuals
         - Precise timing suggesting planning/rehearsal
-        
+
         **📊 Evidence Timeline:**
         - First/last appearance of key individuals
         - Time windows for critical evidentiary moments
         - Duration of observable criminal acts
-        
+
         Provide detailed description and confidence levels for each observation, presenting results in timeline format consistent with event sequence and video frames.`,
-        
+
         'emergency': `🔴 Emergency Analysis - For Immediate Response:
-        
+
         **🚨 Immediate Danger Assessment:**
         - Is there immediate danger to lives?
         - Are there injuries or need for medical assistance?
         - Is the crime still ongoing?
-        
+
         **📞 Urgent Contact Information:**
         - Exact location of incident
         - Number of suspects and movement direction
         - Type of weapons used (if any)
         - Number and condition of victims
-        
+
         **🎯 Response Priorities:**
         - Secure area and protect civilians
         - Track and contain suspects
         - Provide urgent medical assistance
         - Preserve crime scene
-        
+
         Provide brief emergency report with most critical information for immediate response.`};
-    
+
     // أوصاف الـ Prompts
     const promptDescriptions = {
         'forensic': 'التحليل الجنائي الشامل: فحص كامل للفيديو مع التركيز على الأدلة الجنائية والأنشطة الإجرامية',
@@ -1890,13 +1890,13 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         'emergency': 'الطوارئ والاستجابة السريعة: لتقييم المواقف الخطرة فورياً',
         'custom': 'التخصيص اليدوي: اكتب الـ Prompt الذي تريد استخدامه بشكل مخصص'
     };
-    
+
     // تحميل الـ Prompt المحدد
     function loadPromptPreset(presetValue) {
         const customContainer = document.getElementById('customPromptContainer');
         const descriptionDiv = document.getElementById('presetDescription');
         const promptTextarea = document.getElementById('activityPrompt');
-        
+
         if (presetValue === 'custom') {
             // إظهار حقل الإدخال المخصص
             customContainer.classList.remove('hidden');
@@ -1910,7 +1910,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             descriptionDiv.innerHTML = `<strong>${getPresetDisplayName(presetValue)}:</strong> ${promptDescriptions[presetValue]}`;
         }
     }
-    
+
     // الحصول على الاسم المعروض للـ Prompt
     function getPresetDisplayName(presetValue) {
         const presetNames = {
@@ -2000,11 +2000,11 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
         formData.append('text_threshold', document.getElementById('textThreshold').value);
         formData.append('object_threshold', document.getElementById('objectThreshold').value);
         formData.append('detection_step', document.getElementById('detectionStep').value || 1);
-        
+
         if (document.getElementById('enableActivity').checked) {
             formData.append('activity_prompt', document.getElementById('activityPrompt').value);
             formData.append('activity_fps', document.getElementById('activityFps').value);
-            
+
             // إضافة معاملات الضبط المتقدم
             formData.append('max_new_tokens', document.getElementById('maxNewTokens').value);
             formData.append('temperature', document.getElementById('temperature').value);
@@ -2132,6 +2132,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             }
         } catch (error) {
             showStatus('خطأ في جلب النتائج', 'error');
+            console.error('Error fetching results:', error);
         }
     }
 
@@ -2158,7 +2159,8 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     // إضافة الجدول التفاعلي
     html += createInteractiveTable(results);
 
-
+    totalFaces = results.faces_data ? results.faces_data.length : 0;
+    
     const analyzedVideoPath = results.analyzed_video_path 
     ? `/outputs/${currentProcessId}/${results.analyzed_video_path}`
     : `/outputs/${currentProcessId}/video/analyzed_video.mp4`;
@@ -2166,8 +2168,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     const videoWithTimestamp = `${analyzedVideoPath}?t=${Date.now()}`;
     const facesFolderPath = `/outputs/${currentProcessId}/faces/`;
     const outputFolderPath = `/outputs/${currentProcessId}/`;
-    
-    currentFacesPage = 1; 
+
     const facesPerPageSelect = document.getElementById('facesPerPageSelect');
     facesPerPage = facesPerPageSelect ? parseInt(facesPerPageSelect.value) : 4;
 
@@ -2175,6 +2176,14 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     parseInt(document.getElementById('maxFacesDisplay').value) || 4 : 4;
     // عرض الوجوه مع التقليب
     const totalPages = Math.ceil(totalFaces / facesPerPage);
+    
+    // التأكد من أن الصفحة الحالية ضمن النطاق الصحيح
+    if (currentFacesPage > totalPages && totalPages > 0) {
+        currentFacesPage = totalPages;
+    } else if (currentFacesPage < 1 && totalFaces > 0) {
+        currentFacesPage = 1;
+    }
+    
     const startIndex = (currentFacesPage - 1) * facesPerPage;
     const endIndex = Math.min(startIndex + facesPerPage, totalFaces);
     const currentPageFaces = results.faces_data ? results.faces_data.slice(startIndex, endIndex) : [];
@@ -2208,7 +2217,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
                     </select>
                 </div>
             </div>
-    
+
             ${currentPageFaces.length > 0 ? `
                 <div class="face-grid">
                     ${currentPageFaces.map(face => `
@@ -2338,10 +2347,10 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
     function changeFacesPage(direction) {
         const newPage = currentFacesPage + direction;
         const totalPages = Math.ceil(totalFaces / facesPerPage);
-        
+    
         if (newPage >= 1 && newPage <= totalPages) {
             currentFacesPage = newPage;
-            // إعادة تحميل النتائج
+            // إعادة تحميل النتائج مع الحفاظ على حالة الصفحة
             fetchResults(currentProcessId);
         }
     }
@@ -3141,27 +3150,27 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             { id: 'topK', valueId: 'topKValue' },
             { id: 'enhancementStrength', valueId: 'enhancementStrengthValue' }
         ];
-    
+
         advancedSliders.forEach(slider => {
             updateAdvancedSliderValue(slider.id, slider.valueId);
         });
     }
-    
+
     // دالة مخصصة لتحديث قيم الضبط المتقدم
     function updateAdvancedSliderValue(sliderId, valueId) {
         const slider = document.getElementById(sliderId);
         const valueSpan = document.getElementById(valueId);
-        
+
         if (slider && valueSpan) {
             // تحديث القيمة فوراً عند التحميل
             valueSpan.textContent = slider.value;
-            
+
             // إضافة مستمع event للتحديث عند التغيير
             slider.addEventListener('input', function() {
                 valueSpan.textContent = this.value;
                 console.log(`✅ ${sliderId} updated to: ${this.value}`); // للتdebug
             });
-            
+
             // إضافة مستمع event للتحديث عند تغيير الزر أيضاً
             slider.addEventListener('change', function() {
                 valueSpan.textContent = this.value;
@@ -3170,7 +3179,7 @@ curl -X POST "{{base_url}}/stop-analysis/process_id"</code></pre>
             console.error(`❌ Element not found: ${sliderId} or ${valueId}`);
         }
     }
-    
+
 </script>
 </body>
 </html>
@@ -3218,7 +3227,8 @@ async def analyze_video_endpoint(
         enable_activity_recognition: bool = Form(True),
         enable_video_enhancement: bool = Form(False),
         enhancement_strength: int = Form(2),
-        activity_prompt: Optional[str] = Form("You are a video surveillance expert, and your task is to describe the key activities in the video and the environment in which the video events take place, while analyzing the surveillance records provided for each frame. Your goal is to describe unusual activities and notable events, such as numbers, times, and dates, the presence of weapons, masked individuals, or people with unusual appearances, and exceptional incidents such as shootings, thefts, break-ins, and rapid or sudden movements, based on the descriptions provided for each frame. Highlight any unusual activities or problems while maintaining continuity of context. Your summary style should focus on identifying specific incidents, such as potential police activity, accidents, or unusual gatherings, and highlight normal events to provide context about the environment. For example, someone steals from a store, places merchandise in their bag, assaults someone, breaks into a place, fires a gun, is kidnapped, or breaks or removes a window. Summarize what happened in the video. Answer concisely.."),
+        activity_prompt: Optional[str] = Form(
+            "You are a video surveillance expert, and your task is to describe the key activities in the video and the environment in which the video events take place, while analyzing the surveillance records provided for each frame. Your goal is to describe unusual activities and notable events, such as numbers, times, and dates, the presence of weapons, masked individuals, or people with unusual appearances, and exceptional incidents such as shootings, thefts, break-ins, and rapid or sudden movements, based on the descriptions provided for each frame. Highlight any unusual activities or problems while maintaining continuity of context. Your summary style should focus on identifying specific incidents, such as potential police activity, accidents, or unusual gatherings, and highlight normal events to provide context about the environment. For example, someone steals from a store, places merchandise in their bag, assaults someone, breaks into a place, fires a gun, is kidnapped, or breaks or removes a window. Summarize what happened in the video. Answer concisely.."),
         activity_fps: Optional[float] = Form(1.0),
         face_threshold: float = Form(0.3),
         text_threshold: float = Form(0.3),
@@ -3742,4 +3752,3 @@ if __name__ == "__main__":
         port=APP_CONFIG["port"],
         log_level="info"
     )
-
